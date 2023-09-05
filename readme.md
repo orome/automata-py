@@ -5,7 +5,7 @@
 
 A simple Python (3.10) implementation aimed at simulating some cellular automata,
 primarily those focused on by Stephan Wolfram, 
-as I read along in [A New Kind of Science]](https://www.wolframscience.com/nks/p315--the-intrinsic-generation-of-randomness/),
+as I read along in [A New Kind of Science](https://www.wolframscience.com/nks/p315--the-intrinsic-generation-of-randomness/),
 perpetually very much under construction. 
 
 To play with the latest semi-stable version, 

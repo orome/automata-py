@@ -3,9 +3,19 @@ A simple cellular automata based on those discussed in Wolfram's A New Kind of S
 Currently limited to simple elementary (1D, two-state, immediate neighbor) automata,
 using 0 boundary conditions.
 """
+
+# REV - Type annotations throughout
+# REV - Use f-strings throughout
+# REV - Add a method to draw a single step (for use with widget) [check Turing approach]
+# REV - Add run method that animates running of a single step at a time
+# REV - Add rule visualization method
+# REV - Add utility functions for converting between rule number and rule table, and other rule representations
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+
 
 
 class CellularAutomataError(ValueError):
@@ -69,6 +79,16 @@ class CellularAutomata:
                 f"width exceeds left bound with {self.frame_width // 2 + highlight_offset - highlight_width // 2} (< 0)")
         return error_messages
 
+    # REV - Change default highlight to be whole frame
+    # REV - Option to specify grid interval, or no grid at all, with new options: h_grid=None, v_grid=None
+    # REV - Step grid should outline cells, not go through the middle of them
+    # REV - Option to specify a ListedColormap for the states (be sure it gets masked when highlighting)
+    # REV - Break out returning a figure into figure methond and make display into a simple method that does the final drawing
+    # REV - Fix bounding box for the axes so they are tight up against the cells
+    # REV - Keep axes labels centered on the cells
+    # REV - No ticks on the axes
+    # REV - Option to add labeled ticks if a highlight is specified, showing the bounds of the highlight: start stop left right center (and black)
+    # REV - Once display and figure are broken out, add option add data plots along the side of the figure when display is called
     def display(self, fig_width=12, highlight_width=50, highlight_steps=50,
                 highlight_start_step=0, highlight_offset=0, highlight_mask=0.3, show_axes=False):
         """Displays the cellular automaton lattice with optional highlighting and axes."""
@@ -121,6 +141,8 @@ class CellularAutomata:
 
         plt.tight_layout()
         plt.show()
+
+
 
 
 # # Testing with the previous version of the display method

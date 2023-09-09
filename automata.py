@@ -1,15 +1,8 @@
 """
 A simple cellular automata based on those discussed in Wolfram's A New Kind of Science.
 Currently limited to simple elementary (1D, two-state, immediate neighbor) automata,
-using 0 boundary conditions.
+using various boundary conditions.
 """
-
-# REV - Type annotations throughout
-# REV - Use f-strings throughout
-# REV - Add a method to draw a single step (for use with widget) [check Turing approach]
-# REV - Add run method that animates running of a single step at a time
-# REV - Add rule visualization method
-# REV - Add utility functions for converting between rule number and rule table, and other rule representations
 
 
 import numpy as np
@@ -23,17 +16,25 @@ class CellularAutomataError(ValueError):
         super().__init__(", ".join(args).capitalize() + ".")
 
 
+
 class CellularAutomata:
-    def __init__(self, rule_number, initial_conditions, frame_width=101, frame_steps=200):
+    def __init__(self, rule_number, initial_conditions, frame_width=101, frame_steps=200, boundary_condition="zero"):
         # Validate the rule number
         if rule_number < 0 or rule_number > 255:
             raise CellularAutomataError("Invalid rule number. Must be between 0 and 255.")
+
+        # Validate boundary condition
+        valid_boundary_conditions = ["zero", "periodic", "one"]
+        if boundary_condition not in valid_boundary_conditions:
+            raise CellularAutomataError(
+                f"Invalid boundary condition. Must be one of {', '.join(valid_boundary_conditions)}.")
 
         # Set properties
         self.rule_number = rule_number
         self.initial_conditions = initial_conditions
         self.frame_width = frame_width
         self.frame_steps = frame_steps
+        self.boundary_condition = boundary_condition
 
         # Convert rule number to binary representation
         self.rule_binary = self._rule_number_to_binary(self.rule_number)
@@ -55,13 +56,24 @@ class CellularAutomata:
         """Converts a rule number to its binary representation."""
         return format(rule_number, '08b')
 
+    def _get_boundary_values(self, current_row):
+        """Returns boundary values based on boundary condition and current row."""
+        if self.boundary_condition == "zero":
+            return (0, 0)
+        elif self.boundary_condition == "periodic":
+            return (current_row[-1], current_row[0])
+        elif self.boundary_condition == "one":
+            return (1, 1)
+
     def _compute_automaton(self):
         """Generates the automaton based on the rule and initial conditions."""
         for row in range(1, self.frame_steps):
-            for col in range(1, self.frame_width - 1):
-                pattern = self._lattice[row - 1, col - 1:col + 2]
+            left_boundary, right_boundary = self._get_boundary_values(self._lattice[row - 1])
+            extended_current_row = np.hstack(([left_boundary], self._lattice[row - 1], [right_boundary]))
+            for col in range(1, self.frame_width + 1):  # Adjusted to account for extended row
+                pattern = extended_current_row[col - 1:col + 2]
                 idx = 7 - int("".join(map(str, pattern)), 2)  # Convert binary pattern to index
-                self._lattice[row, col] = int(self.rule_binary[idx])
+                self._lattice[row, col - 1] = int(self.rule_binary[idx])  # Adjusted to account for extended row
 
     def _check_highlight_bounds(self, highlight_start_step, highlight_steps, highlight_width, highlight_offset):
         """Checks bounds for highlighting and returns error messages if they exist."""
@@ -79,19 +91,15 @@ class CellularAutomata:
                 f"width exceeds left bound with {self.frame_width // 2 + highlight_offset - highlight_width // 2} (< 0)")
         return error_messages
 
-    # REV - Change default highlight to be whole frame
-    # REV - Option to specify grid interval, or no grid at all, with new options: h_grid=None, v_grid=None
-    # REV - Step grid should outline cells, not go through the middle of them
-    # REV - Option to specify a ListedColormap for the states (be sure it gets masked when highlighting)
-    # REV - Break out returning a figure into figure methond and make display into a simple method that does the final drawing
-    # REV - Fix bounding box for the axes so they are tight up against the cells
-    # REV - Keep axes labels centered on the cells
-    # REV - No ticks on the axes
-    # REV - Option to add labeled ticks if a highlight is specified, showing the bounds of the highlight: start stop left right center (and black)
-    # REV - Once display and figure are broken out, add option add data plots along the side of the figure when display is called
-    def display(self, fig_width=12, highlight_width=50, highlight_steps=50,
-                highlight_start_step=0, highlight_offset=0, highlight_mask=0.3, show_axes=False):
-        """Displays the cellular automaton lattice with optional highlighting and axes."""
+    def get_display(self, fig_width=12, highlight_width=None, highlight_steps=None,
+                highlight_start_step=0, highlight_offset=0, highlight_mask=0.3,
+                grid_color=None, grid_width=0.5):
+        """Displays the cellular automaton lattice optionally highlighting a frame within it and optionally showing a grid around the cells."""
+
+        if highlight_width is None:
+            highlight_width = self.frame_width - 2 * abs(highlight_offset) # FIX - Why times 2? <<<
+        if highlight_steps is None:
+            highlight_steps = self.frame_steps - highlight_start_step
 
         # Check if the highlight region exceeds the bounds of the lattice
         error_messages = self._check_highlight_bounds(highlight_start_step, highlight_steps, highlight_width,
@@ -102,74 +110,33 @@ class CellularAutomata:
         # Create a mask for highlighting
         mask = np.ones_like(self._lattice) * highlight_mask
         mask[highlight_start_step:highlight_start_step + highlight_steps,
-        self.frame_width // 2 + highlight_offset - highlight_width // 2:
+        self.frame_width // 2 + highlight_offset - highlight_width // 2: # FIX - Assumes symmetryc which isn't true if shifted! <<<
         self.frame_width // 2 + highlight_offset + highlight_width // 2] = 1
 
         # Plotting
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
         ax.imshow(self._lattice * mask, cmap='binary', aspect='equal', interpolation='none')
 
-        # Show axes if required
-        if show_axes:
-            ax.spines['top'].set_color('lightgray')
-            ax.spines['bottom'].set_color('lightgray')
-            ax.spines['left'].set_color('lightgray')
-            ax.spines['right'].set_color('lightgray')
-            ax.xaxis.set_ticks_position('both')
-            ax.yaxis.set_ticks_position('both')
-            ax.tick_params(axis='both', colors='lightgray', which='both')
+        # Add grid with lines around each cell if grid_color is specified
+        if grid_color:
+            ax.grid(which='minor', color=grid_color, linewidth=grid_width)  # Use the specified grid width
+            ax.set_xticks(np.arange(-.5, self.frame_width, 1), minor=True)
+            ax.set_yticks(np.arange(-.5, self.frame_steps, 1), minor=True)
 
-            ax.set_xticks([i for i in range(0, self.frame_width, 10)])
-            ax.set_yticks([i for i in range(0, self.frame_steps, 10)])
+            # Turn off major grid lines
+            ax.grid(which='major', visible=False)
 
-            # Adjusting label positions
-            ax.xaxis.set_label_position("top")
-            ax.yaxis.set_label_position("left")
-
-            # Setting labels for x-axis as offsets from the center
-            ax.set_xticklabels([i - self.frame_width // 2 for i in range(0, self.frame_width, 10)])
-
-            # Setting labels for y-axis as steps
-            ax.set_yticklabels([i for i in range(0, self.frame_steps, 10)])
-
-            # Remove padding
-            ax.set_xlim(left=0, right=self.frame_width)
-            ax.set_ylim(bottom=self.frame_steps, top=0)
-
+            ax.tick_params(which='both', bottom=False, left=False, labelbottom=False,
+                           labelleft=False)  # Hide ticks and labels
         else:
             ax.axis('off')
 
+        for spine in ax.spines.values():
+            plt.setp(ax.spines.values(), color=grid_color, linewidth=grid_width)
+
         plt.tight_layout()
+        return fig, ax
+
+    def display(self, *args, **kwargs):
+        fig, ax = self.get_display(*args, **kwargs)
         plt.show()
-
-
-
-
-# # Testing with the previous version of the display method
-# ca10 = CellularAutomata(30, [-1, 1], frame_steps=50)
-# ca10.display(highlight_width=10, highlight_steps=20, highlight_start_step=0, highlight_offset=-5, highlight_mask=0.1)
-#CellularAutomata(30, [-1, 1], frame_steps=50).display(highlight_width=10, highlight_steps=20, highlight_start_step=0, highlight_offset=-5, highlight_mask=0.1)
-
-
-# def x_display(self, fig_width=12, highlight_width=50, highlight_steps=50,
-    #             highlight_start_step=0, highlight_offset=0, highlight_mask=0.3):
-    #     """Displays the cellular automaton lattice with optional highlighting."""
-    #
-    #     # Check if the highlight region exceeds the bounds of the lattice
-    #     if (highlight_start_step + highlight_steps > self.frame_steps or
-    #             highlight_start_step < 0 or
-    #             self.frame_width // 2 + highlight_offset + highlight_width // 2 > self.frame_width or
-    #             self.frame_width // 2 + highlight_offset - highlight_width // 2 < 0):
-    #         raise ValueError("Requested highlight region exceeds the bounds of the lattice.")
-    #
-    #     # Create a mask for highlighting
-    #     mask = np.ones_like(self._lattice) * highlight_mask
-    #     mask[highlight_start_step:highlight_start_step + highlight_steps,
-    #     self.frame_width // 2 + highlight_offset - highlight_width // 2:
-    #     self.frame_width // 2 + highlight_offset + highlight_width // 2] = 1
-    #
-    #     # Plotting
-    #     fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
-    #     ax.imshow(self._lattice * mask, cmap='binary', aspect='equal', interpolation='none')
-    #     ax.axis('off')
-    #     plt.show()

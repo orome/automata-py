@@ -4,17 +4,14 @@ Currently limited to simple elementary (1D, two-state, immediate neighbor) autom
 using various boundary conditions.
 """
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 
 
-
 class CellularAutomataError(ValueError):
     def __init__(self, *args):
         super().__init__(", ".join(args).capitalize() + ".")
-
 
 
 class CellularAutomata:
@@ -55,7 +52,8 @@ class CellularAutomata:
         # Compute the automaton
         self._compute_automaton()
 
-    def _rule_number_to_binary(self, rule_number):
+    @staticmethod
+    def _rule_number_to_binary(rule_number):
         """
         Converts a rule number to its binary representation.
         """
@@ -66,11 +64,11 @@ class CellularAutomata:
         Returns boundary values based on boundary condition and current row.
         """
         if self.boundary_condition == "zero":
-            return (0, 0)
+            return 0, 0
         elif self.boundary_condition == "periodic":
-            return (current_row[-1], current_row[0])
+            return current_row[-1], current_row[0]
         elif self.boundary_condition == "one":
-            return (1, 1)
+            return 1, 1
 
     def _compute_automaton(self):
         """
@@ -86,28 +84,32 @@ class CellularAutomata:
 
     def _check_highlight_bounds(self, highlight_start_step, highlight_steps, highlight_width, highlight_offset):
         """
-        Checks bounds for highlighting and returns error messages any explicitly provided.
+        Checks bounds for highlighting and returns error messages for any explicitly provided invalid bounds.
         """
         error_messages = []
         if all([highlight_start_step, highlight_steps]):
             if highlight_start_step + highlight_steps > self.frame_steps:
                 error_messages.append(
-                    f"starts at step {highlight_start_step} and ends at step {highlight_start_step + highlight_steps} (> {self.frame_steps})")
+                    f"highlight starts at step {highlight_start_step} "
+                    f"and ends at step {highlight_start_step + highlight_steps} (> {self.frame_steps})")
         if all([highlight_start_step]):
             if highlight_start_step < 0:
-                error_messages.append(f"starts before step 0")
+                error_messages.append(f"highlight starts before step 0")
         if all([highlight_offset, highlight_width]):
-            if self.frame_width // 2 + highlight_offset + highlight_width // 2 > self.frame_width:
+            if (self.frame_width + highlight_width) // 2 + highlight_offset > self.frame_width:
                 error_messages.append(
-                    f"width exceeds right bound with {self.frame_width // 2 + highlight_offset + highlight_width // 2} (> {self.frame_width})")
-            if self.frame_width // 2 + highlight_offset - highlight_width // 2 < 0:
+                    f"highlight exceeds right bound with "
+                    f"{(self.frame_width + highlight_width) // 2 + highlight_offset} (> {self.frame_width})")
+            if (self.frame_width - highlight_width) // 2 + highlight_offset < 0:
                 error_messages.append(
-                    f"width exceeds left bound with {self.frame_width // 2 + highlight_offset - highlight_width // 2} (< 0)")
+                    f"highlight exceeds left bound with "
+                    f"{(self.frame_width - highlight_width) // 2 + highlight_offset} (< {0})")
         return error_messages
 
     def get_display(self, fig_width=12,
                     highlight_start_step=None, highlight_steps=None, highlight_offset=None, highlight_width=None,
                     highlight_mask=0.3, grid_color=None, grid_width=0.5,
+                    cell_colors=('white', 'black'),
                     check_highlight_bounds=True):
         """
         Displays the cellular automaton lattice
@@ -121,7 +123,6 @@ class CellularAutomata:
                                                           highlight_width, highlight_offset)
             if error_messages:
                 raise CellularAutomataError(*error_messages)
-        print(highlight_start_step, highlight_steps, highlight_offset, highlight_width)
 
         # Set any unspecified highlight bounds to default values
         if highlight_start_step is None:
@@ -133,18 +134,15 @@ class CellularAutomata:
         if highlight_width is None:
             highlight_width = self.frame_width
 
-        print(highlight_start_step, highlight_steps, highlight_offset, highlight_width)
-
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
-        # !!! - Something wrong where with how frame with is fixed <<<
         mask = np.ones_like(self._lattice) * highlight_mask
         mask[highlight_start_step:highlight_start_step + highlight_steps,
-        self.frame_width // 2 + min(0, highlight_offset - highlight_width // 2):
-        self.frame_width // 2 + max(0, highlight_offset + highlight_width // 2)] = 1
+             max(0, (self.frame_width - highlight_width) // 2 + highlight_offset):
+             min(self.frame_width, (self.frame_width + highlight_width) // 2 + highlight_offset)] = 1
 
         # Plotting
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
-        ax.imshow(self._lattice * mask, cmap='binary', aspect='equal', interpolation='none')
+        ax.imshow(self._lattice, cmap=ListedColormap(cell_colors), alpha=mask, aspect='equal', interpolation='none')
 
         # Add grid with lines around each cell if grid_color is specified
         if grid_color:
@@ -160,12 +158,11 @@ class CellularAutomata:
         else:
             ax.axis('off')
 
-        for spine in ax.spines.values():
-            plt.setp(ax.spines.values(), color=grid_color, linewidth=grid_width)
+        plt.setp(ax.spines.values(), color=grid_color, linewidth=grid_width)
 
         plt.tight_layout()
         return fig, ax
 
     def display(self, *args, **kwargs):
-        fig, ax = self.get_display(*args, **kwargs)
+        _, _ = self.get_display(*args, **kwargs)
         plt.show()

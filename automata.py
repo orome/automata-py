@@ -14,6 +14,15 @@ class CellularAutomataError(ValueError):
         super().__init__(", ".join(args).capitalize() + ".")
 
 
+# A simple class for specifying highlighting bounds
+class HighlightBounds:
+    def __init__(self, start_step=None, steps=None, offset=None, width=None):
+        self.start_step = start_step
+        self.steps = steps
+        self.offset = offset
+        self.width = width
+
+
 class CellularAutomata:
     def __init__(self, rule_number, initial_conditions,
                  frame_width=101, frame_steps=200,
@@ -82,32 +91,32 @@ class CellularAutomata:
                 idx = 7 - int("".join(map(str, pattern)), 2)  # Convert binary pattern to index
                 self._lattice[row, col - 1] = int(self.rule_binary[idx])  # Adjusted to account for extended row
 
-    def _check_highlight_bounds(self, highlight_start_step, highlight_steps, highlight_width, highlight_offset):
+    def _check_highlight_bounds(self, highlight: HighlightBounds):
         """
         Checks bounds for highlighting and returns error messages for any explicitly provided invalid bounds.
         """
         error_messages = []
-        if all([highlight_start_step, highlight_steps]):
-            if highlight_start_step + highlight_steps > self.frame_steps:
+        if all([highlight.start_step, highlight.steps]):
+            if highlight.start_step + highlight.steps > self.frame_steps:
                 error_messages.append(
-                    f"highlight starts at step {highlight_start_step} "
-                    f"and ends at step {highlight_start_step + highlight_steps} (> {self.frame_steps})")
-        if all([highlight_start_step]):
-            if highlight_start_step < 0:
+                    f"highlight starts at step {highlight.start_step} "
+                    f"and ends at step {highlight.start_step + highlight.steps} (> {self.frame_steps})")
+        if all([highlight.start_step]):
+            if highlight.start_step < 0:
                 error_messages.append(f"highlight starts before step 0")
-        if all([highlight_offset, highlight_width]):
-            if (self.frame_width + highlight_width) // 2 + highlight_offset > self.frame_width:
+        if all([highlight.offset, highlight.width]):
+            if (self.frame_width + highlight.width) // 2 + highlight.offset > self.frame_width:
                 error_messages.append(
                     f"highlight exceeds right bound with "
-                    f"{(self.frame_width + highlight_width) // 2 + highlight_offset} (> {self.frame_width})")
-            if (self.frame_width - highlight_width) // 2 + highlight_offset < 0:
+                    f"{(self.frame_width + highlight.width) // 2 + highlight.offset} (> {self.frame_width})")
+            if (self.frame_width - highlight.width) // 2 + highlight.offset < 0:
                 error_messages.append(
                     f"highlight exceeds left bound with "
-                    f"{(self.frame_width - highlight_width) // 2 + highlight_offset} (< {0})")
+                    f"{(self.frame_width - highlight.width) // 2 + highlight.offset} (< 0)")
         return error_messages
 
-    def get_display(self, fig_width=12,
-                    highlight_start_step=None, highlight_steps=None, highlight_offset=None, highlight_width=None,
+    def get_display(self, fig_width=12, highlights: [HighlightBounds] = [HighlightBounds()],
+                    # highlight_start_step=None, highlight_steps=None, highlight_offset=None, highlight_width=None,
                     highlight_mask=0.3, grid_color=None, grid_width=0.5,
                     cell_colors=('white', 'black'),
                     check_highlight_bounds=True):
@@ -116,29 +125,30 @@ class CellularAutomata:
         optionally highlighting a frame within it and
         optionally showing a grid around the cells.
         """
+        for highlight in highlights:
+            # Check if the highlight region specified by any provided highlight bounds exceeds the bounds of the lattice
+            if check_highlight_bounds:
 
-        # Check if the highlight region specified by any provided highlight bounds exceeds the bounds of the lattice
-        if check_highlight_bounds:
-            error_messages = self._check_highlight_bounds(highlight_start_step, highlight_steps,
-                                                          highlight_width, highlight_offset)
-            if error_messages:
-                raise CellularAutomataError(*error_messages)
+                error_messages = self._check_highlight_bounds(highlight)
+                if error_messages:
+                    raise CellularAutomataError(*error_messages)
 
-        # Set any unspecified highlight bounds to default values
-        if highlight_start_step is None:
-            highlight_start_step = 0
-        if highlight_steps is None:
-            highlight_steps = self.frame_steps - highlight_start_step
-        if highlight_offset is None:
-            highlight_offset = 0
-        if highlight_width is None:
-            highlight_width = self.frame_width
+            # Set any unspecified highlight bounds to default values
+            if highlight.start_step is None:
+                highlight.start_step = 0
+            if highlight.steps is None:
+                highlight.steps = self.frame_steps - highlight.start_step
+            if highlight.offset is None:
+                highlight.offset = 0
+            if highlight.width is None:
+                highlight.width = self.frame_width
 
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
         mask = np.ones_like(self._lattice) * highlight_mask
-        mask[highlight_start_step:highlight_start_step + highlight_steps,
-             max(0, (self.frame_width - highlight_width) // 2 + highlight_offset):
-             min(self.frame_width, (self.frame_width + highlight_width) // 2 + highlight_offset)] = 1
+        for highlight in highlights:
+            mask[highlight.start_step:highlight.start_step + highlight.steps,
+                 max(0, (self.frame_width - highlight.width) // 2 + highlight.offset):
+                 min(self.frame_width, (self.frame_width + highlight.width) // 2 + highlight.offset)] = 1
 
         # Plotting
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))

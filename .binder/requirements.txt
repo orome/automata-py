@@ -1,4 +1,4 @@
-# Requrements for use with Binder (or local JupyterLab if what works on Binder is sufficient)
+# Requirements for use with Binder (or local JupyterLab if what works on Binder is sufficient)
 # See https://discourse.jupyter.org/t/what-is-installed-by-default-with-binder/10217/5
 
 # USE in Binder (locally _jupyterlab/requirements.txt is more appropriate): <<<
@@ -6,18 +6,14 @@
 -r ../requirements.txt
 #-e ..                      # if using a setup.py
 
-jupyterlab >=4.0
+notebook >=7.0
 
 nbdime
 #jupyterlab-git             # restore instead of nbgitpuller when issue 998 is resolved
 nbgitpuller                # see https://jupyterhub.github.io/nbgitpuller/link
 jupyterlab-link-share
 #jupyter-videochat
-#jupyterlab-kite            # doesn't work on Binder; install seperately for local use
+#jupyterlab-kite            # doesn't work on Binder; install separately for local use
 
 ipywidgets                  # already installed by Binder?
 ipympl
-
-
-
-

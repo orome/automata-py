@@ -81,15 +81,37 @@ class CellularAutomata:
 
     def _compute_automaton(self):
         """
-        Generates the automaton based on the rule and initial conditions.
+        Generates the automaton based on the rule and initial conditions using a vectorized approach.
         """
         for row in range(1, self.frame_steps):
+            # Get boundary values and extend current row
             left_boundary, right_boundary = self._get_boundary_values(self._lattice[row - 1])
             extended_current_row = np.hstack(([left_boundary], self._lattice[row - 1], [right_boundary]))
-            for col in range(1, self.frame_width + 1):  # Adjusted to account for extended row
-                pattern = extended_current_row[col - 1:col + 2]
-                idx = 7 - int("".join(map(str, pattern)), 2)  # Convert binary pattern to index
-                self._lattice[row, col - 1] = int(self.rule_binary[idx])  # Adjusted to account for extended row
+
+            # Use slicing to get left, center, and right neighbors for each cell
+            left_neighbors = extended_current_row[:-2]
+            center_neighbors = extended_current_row[1:-1]
+            right_neighbors = extended_current_row[2:]
+
+            # Form the 3-bit binary numbers for each cell in parallel
+            patterns = left_neighbors * 4 + center_neighbors * 2 + right_neighbors
+
+            # Use the patterns to index into the rule's binary representation and update the entire next row
+            self._lattice[row] = [int(self.rule_binary[7 - pattern]) for pattern in patterns]
+
+    def _compute_automaton_loop(self):
+        """
+        Generates the automaton based on the rule and initial conditions.
+        Slow version using loops. Kept for reference. Faster version tales <20% of the time, even for small frames.
+        """
+        assert False
+        # for row in range(1, self.frame_steps):
+        #     left_boundary, right_boundary = self._get_boundary_values(self._lattice[row - 1])
+        #     extended_current_row = np.hstack(([left_boundary], self._lattice[row - 1], [right_boundary]))
+        #     for col in range(1, self.frame_width + 1):  # Adjusted to account for extended row
+        #         pattern = extended_current_row[col - 1:col + 2]
+        #         idx = 7 - int("".join(map(str, pattern)), 2)  # Convert binary pattern to index
+        #         self._lattice[row, col - 1] = int(self.rule_binary[idx])  # Adjusted to account for extended row
 
     def _check_highlight_bounds(self, highlight: HighlightBounds):
         """

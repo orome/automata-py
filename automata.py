@@ -23,6 +23,15 @@ class HighlightBounds:
         self.width = width
 
 
+class SliceSpec:
+    def __init__(self, start_step=None, steps=None):
+        self.start_step = start_step
+        self.steps = steps
+
+    def range(self):
+        return slice(self.start_step, self.start_step + self.steps)
+
+
 class CellularAutomata:
     def __init__(self, rule_number, initial_conditions,
                  frame_width=101, frame_steps=200,
@@ -99,20 +108,6 @@ class CellularAutomata:
             # Use the patterns to index into the rule's binary representation and update the entire next row
             self._lattice[row] = [int(self.rule_binary[7 - pattern]) for pattern in patterns]
 
-    def _compute_automaton_loop(self):
-        """
-        Generates the automaton based on the rule and initial conditions.
-        Slow version using loops. Kept for reference. Faster version tales <20% of the time, even for small frames.
-        """
-        assert False
-        # for row in range(1, self.frame_steps):
-        #     left_boundary, right_boundary = self._get_boundary_values(self._lattice[row - 1])
-        #     extended_current_row = np.hstack(([left_boundary], self._lattice[row - 1], [right_boundary]))
-        #     for col in range(1, self.frame_width + 1):  # Adjusted to account for extended row
-        #         pattern = extended_current_row[col - 1:col + 2]
-        #         idx = 7 - int("".join(map(str, pattern)), 2)  # Convert binary pattern to index
-        #         self._lattice[row, col - 1] = int(self.rule_binary[idx])  # Adjusted to account for extended row
-
     def _check_highlight_bounds(self, highlight: HighlightBounds):
         """
         Checks bounds for highlighting and returns error messages for any explicitly provided invalid bounds.
@@ -137,8 +132,9 @@ class CellularAutomata:
                     f"{(self.frame_width - highlight.width) // 2 + highlight.offset} (< 0)")
         return error_messages
 
-    def get_display(self, fig_width=12, highlights: [HighlightBounds] = [HighlightBounds()],
-                    # highlight_start_step=None, highlight_steps=None, highlight_offset=None, highlight_width=None,
+    def get_display(self, fig_width=12,
+                    highlights: [HighlightBounds] = [HighlightBounds()],
+                    slice_steps: SliceSpec = None,
                     highlight_mask=0.3, grid_color=None, grid_width=0.5,
                     cell_colors=('white', 'black'),
                     check_highlight_bounds=True):
@@ -150,11 +146,9 @@ class CellularAutomata:
         for highlight in highlights:
             # Check if the highlight region specified by any provided highlight bounds exceeds the bounds of the lattice
             if check_highlight_bounds:
-
                 error_messages = self._check_highlight_bounds(highlight)
                 if error_messages:
                     raise CellularAutomataError(*error_messages)
-
             # Set any unspecified highlight bounds to default values
             if highlight.start_step is None:
                 highlight.start_step = 0
@@ -172,15 +166,28 @@ class CellularAutomata:
                  max(0, (self.frame_width - highlight.width) // 2 + highlight.offset):
                  min(self.frame_width, (self.frame_width + highlight.width) // 2 + highlight.offset)] = 1
 
+        # Set the slice to the entire frame if not specified
+        if slice_steps is None:
+            slice_steps = SliceSpec(0, self.frame_steps)
+        # Otherwise set unspecified or overflowing slice bounds to default values
+        elif slice_steps.start_step is None or slice_steps.start_step < 0:
+            slice_steps.start_step = 0
+        elif slice_steps.steps is None or slice_steps.steps < 1:
+            slice_steps.steps = 1
+        elif slice_steps.steps > self.frame_steps - slice_steps.start_step:
+            slice_steps.steps = self.frame_steps - slice_steps.start_step
+
         # Plotting
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
-        ax.imshow(self._lattice, cmap=ListedColormap(cell_colors), alpha=mask, aspect='equal', interpolation='none')
+        ax.imshow(self._lattice[slice_steps.range()], alpha=mask[slice_steps.range()],
+                  cmap=ListedColormap(cell_colors),
+                  aspect='equal', interpolation='none')
 
         # Add grid with lines around each cell if grid_color is specified
         if grid_color:
             ax.grid(which='minor', color=grid_color, linewidth=grid_width)  # Use the specified grid width
             ax.set_xticks(np.arange(-.5, self.frame_width, 1), minor=True)
-            ax.set_yticks(np.arange(-.5, self.frame_steps, 1), minor=True)
+            ax.set_yticks(np.arange(-.5, slice_steps.steps, 1), minor=True) # Note: not using frame_steps here
 
             # Turn off major grid lines
             ax.grid(which='major', visible=False)

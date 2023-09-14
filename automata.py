@@ -10,8 +10,9 @@ from matplotlib.colors import ListedColormap
 
 
 class CellularAutomataError(ValueError):
-    def __init__(self, *args):
-        super().__init__(", ".join(args).capitalize() + ".")
+    def __init__(self, *args: str):
+        # super().__init__(", ".join(args).capitalize() + ".")
+        super().__init__(", ".join(args) + ".")
 
 
 # A simple class for specifying highlighting bounds
@@ -70,6 +71,14 @@ class CellularAutomata:
         # Compute the automaton
         self._compute_automaton()
 
+    # Return the lattice, optionally with a slice specified using a SliceSpec object
+    def lattice(self, slice_steps: SliceSpec = None):
+        if slice_steps is None:
+            slice_steps = SliceSpec(0, self.frame_steps)
+        else:
+            self._validate_slice_bounds(slice_steps, check_bounds=True)
+        return self._lattice[slice_steps.range()]
+
     @staticmethod
     def _rule_number_to_binary(rule_number):
         """
@@ -108,29 +117,71 @@ class CellularAutomata:
             # Use the patterns to index into the rule's binary representation and update the entire next row
             self._lattice[row] = [int(self.rule_binary[7 - pattern]) for pattern in patterns]
 
-    def _check_highlight_bounds(self, highlight: HighlightBounds):
+    def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
         """
         Checks bounds for highlighting and returns error messages for any explicitly provided invalid bounds.
+        Set any unspecified highlight bounds to default values.
+        Adjust unchecked provided bounds implement the intended highlight (which may be clipped or outside the frame).
         """
-        error_messages = []
-        if all([highlight.start_step, highlight.steps]):
-            if highlight.start_step + highlight.steps > self.frame_steps:
-                error_messages.append(
-                    f"highlight starts at step {highlight.start_step} "
-                    f"and ends at step {highlight.start_step + highlight.steps} (> {self.frame_steps})")
-        if all([highlight.start_step]):
-            if highlight.start_step < 0:
-                error_messages.append(f"highlight starts before step 0")
-        if all([highlight.offset, highlight.width]):
-            if (self.frame_width + highlight.width) // 2 + highlight.offset > self.frame_width:
-                error_messages.append(
-                    f"highlight exceeds right bound with "
-                    f"{(self.frame_width + highlight.width) // 2 + highlight.offset} (> {self.frame_width})")
-            if (self.frame_width - highlight.width) // 2 + highlight.offset < 0:
-                error_messages.append(
-                    f"highlight exceeds left bound with "
-                    f"{(self.frame_width - highlight.width) // 2 + highlight.offset} (< 0)")
-        return error_messages
+        # Check if the highlight region specified by any provided highlight bounds exceeds the bounds of the lattice
+        if check_bounds:
+            error_messages = []
+            if all([highlight.start_step, highlight.steps]):
+                if highlight.start_step + highlight.steps > self.frame_steps:
+                    error_messages.append(
+                        f"highlight starts at step {highlight.start_step} "
+                        f"and ends at step {highlight.start_step + highlight.steps} (> {self.frame_steps})")
+            if all([highlight.start_step]):
+                if highlight.start_step < 0:
+                    error_messages.append(f"highlight starts before step 0")
+            if all([highlight.offset, highlight.width]):
+                if (self.frame_width + highlight.width) // 2 + highlight.offset > self.frame_width:
+                    error_messages.append(
+                        f"highlight exceeds right bound with "
+                        f"{(self.frame_width + highlight.width) // 2 + highlight.offset} (> {self.frame_width})")
+                if (self.frame_width - highlight.width) // 2 + highlight.offset < 0:
+                    error_messages.append(
+                        f"highlight exceeds left bound with "
+                        f"{(self.frame_width - highlight.width) // 2 + highlight.offset} (< 0)")
+            if error_messages:
+                raise CellularAutomataError(*error_messages)
+
+        # Set any unspecified highlight bounds to default values
+        if highlight.start_step is None:
+            highlight.start_step = 0
+        if highlight.steps is None:
+            highlight.steps = self.frame_steps - highlight.start_step
+        if highlight.offset is None:
+            highlight.offset = 0
+        if highlight.width is None:
+            highlight.width = self.frame_width
+
+        # Adjust unchecked provided bounds
+        if highlight.start_step < 0:
+            highlight.steps = max(0, highlight.steps + highlight.start_step)
+            highlight.start_step = 0
+
+    def _validate_slice_bounds(self, slice_spec: SliceSpec, check_bounds: bool):
+        """
+        Checks bounds for slice and returns error messages for any explicitly provided invalid bounds.
+        Implement default behavior for missing or unchecked invalid specs.
+        """
+        if slice_spec.start_step is None or slice_spec.start_step < 0:
+            if check_bounds:
+                raise CellularAutomataError(f"Invalid slice start step {slice_spec.start_step}. Must be >= 0.")
+            else:
+                slice_spec.start_step = 0
+        elif slice_spec.steps is None or slice_spec.steps < 1:
+            if check_bounds:
+                raise CellularAutomataError(f"Invalid slice steps {slice_spec.steps}. Must be >= 1.")
+            else:
+                slice_spec.steps = 1
+        elif slice_spec.steps > self.frame_steps - slice_spec.start_step:
+            if check_bounds:
+                raise CellularAutomataError(
+                    f"Invalid slice steps {slice_spec.steps}. Must be <= {self.frame_steps - slice_spec.start_step}.")
+            else:
+                slice_spec.steps = self.frame_steps - slice_spec.start_step
 
     def get_display(self, fig_width=12,
                     highlights: [HighlightBounds] = [HighlightBounds()],
@@ -144,20 +195,7 @@ class CellularAutomata:
         optionally showing a grid around the cells.
         """
         for highlight in highlights:
-            # Check if the highlight region specified by any provided highlight bounds exceeds the bounds of the lattice
-            if check_highlight_bounds:
-                error_messages = self._check_highlight_bounds(highlight)
-                if error_messages:
-                    raise CellularAutomataError(*error_messages)
-            # Set any unspecified highlight bounds to default values
-            if highlight.start_step is None:
-                highlight.start_step = 0
-            if highlight.steps is None:
-                highlight.steps = self.frame_steps - highlight.start_step
-            if highlight.offset is None:
-                highlight.offset = 0
-            if highlight.width is None:
-                highlight.width = self.frame_width
+            self._validate_highlight_bounds(highlight, check_bounds=check_highlight_bounds)
 
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
         mask = np.ones_like(self._lattice) * highlight_mask
@@ -169,13 +207,9 @@ class CellularAutomata:
         # Set the slice to the entire frame if not specified
         if slice_steps is None:
             slice_steps = SliceSpec(0, self.frame_steps)
-        # Otherwise set unspecified or overflowing slice bounds to default values
-        elif slice_steps.start_step is None or slice_steps.start_step < 0:
-            slice_steps.start_step = 0
-        elif slice_steps.steps is None or slice_steps.steps < 1:
-            slice_steps.steps = 1
-        elif slice_steps.steps > self.frame_steps - slice_steps.start_step:
-            slice_steps.steps = self.frame_steps - slice_steps.start_step
+        else:
+            # Otherwise set unspecified or overflowing slice bounds to default values
+            self._validate_slice_bounds(slice_steps, check_bounds=False)
 
         # Plotting
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
@@ -187,7 +221,7 @@ class CellularAutomata:
         if grid_color:
             ax.grid(which='minor', color=grid_color, linewidth=grid_width)  # Use the specified grid width
             ax.set_xticks(np.arange(-.5, self.frame_width, 1), minor=True)
-            ax.set_yticks(np.arange(-.5, slice_steps.steps, 1), minor=True) # Note: not using frame_steps here
+            ax.set_yticks(np.arange(-.5, slice_steps.steps, 1), minor=True)  # Note: not using frame_steps here
 
             # Turn off major grid lines
             ax.grid(which='major', visible=False)

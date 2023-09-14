@@ -8,7 +8,7 @@
 
 notebook >=7.0
 
-nbdime
+#nbdime
 #jupyterlab-git             # restore instead of nbgitpuller when issue 998 is resolved
 nbgitpuller                # see https://jupyterhub.github.io/nbgitpuller/link
 jupyterlab-link-share

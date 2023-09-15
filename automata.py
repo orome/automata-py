@@ -184,7 +184,7 @@ class CellularAutomata:
                 slice_spec.steps = self.frame_steps - slice_spec.start_step
 
     def get_display(self, fig_width=12,
-                    highlights: [HighlightBounds] = [HighlightBounds()],
+                    highlights: [HighlightBounds] = (HighlightBounds(),),
                     slice_steps: SliceSpec = None,
                     highlight_mask=0.3, grid_color=None, grid_width=0.5,
                     cell_colors=('white', 'black'),

@@ -7,6 +7,7 @@ using various boundary conditions.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from matplotlib.patches import Rectangle
 
 
 class CellularAutomataError(ValueError):
@@ -239,3 +240,70 @@ class CellularAutomata:
     def display(self, *args, **kwargs):
         _, _ = self.get_display(*args, **kwargs)
         plt.show()
+
+    @staticmethod
+    def _get_encoded_rule_display(rule_encoded, fig_width, gap, vertical_shift, grid_color, grid_width):
+
+        def draw_custom_cell(x, y, d, cell_size=1):
+            colors = {'0': 'white', '1': 'black'}
+            cell_color = colors[d]
+            rect = Rectangle((x, y), cell_size, cell_size,
+                             edgecolor=grid_color, facecolor=cell_color, linewidth=grid_width)
+            ax.add_patch(rect)
+
+        # Define the 8 possible 3-bit configurations
+        configurations = ['111', '110', '101', '100', '011', '010', '001', '000']
+
+        # Create a new figure and axis
+        fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
+        ax.set_xlim(-0.25, 4*len(configurations)-0.75)
+        ax.set_ylim(0, 2.5)
+        ax.set_aspect('equal')
+        ax.axis('off')
+
+        # Adjust the vertical position using the vertical_shift
+        y_top = 2 - gap - vertical_shift
+        y_bottom = 1 - 2 * gap - vertical_shift
+
+        # Iterate over each configuration and draw it followed by its output
+        for idx, config in enumerate(configurations):
+            output = rule_encoded[idx]
+            # Draw the 3-bit configuration
+            for i, digit in enumerate(config):
+                draw_custom_cell(i + idx * 4, y_top, digit)
+
+            # Draw the output below the configuration, with a gap
+            draw_custom_cell(idx * 4 + 1, y_bottom, output)
+
+        plt.tight_layout()
+        return fig, ax
+
+    def get_rule_display(self, gap=0.2, fig_width=12, vertical_shift=0.5, grid_color='black', grid_width=0.5):
+        return self._get_encoded_rule_display(self.rule_binary, fig_width, gap, vertical_shift, grid_color, grid_width)
+
+    def display_rule(self, *args, **kwargs):
+        _, _ = self.get_rule_display(*args, **kwargs)
+        plt.show()
+
+
+# def rule_number_to_base(rule_number, base=2, length=None):
+#     """
+#     Converts a rule number to its representation in the given base.
+#     """
+#     if length is None:
+#         length = base ** 2  # This is a default, but might need to be adjusted based on context
+#
+#     alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+#     if base > len(alphabet):
+#         raise ValueError(f"Base too large. Can't handle base > {len(alphabet)}")
+#
+#     digits = []
+#     while rule_number:
+#         digits.append(alphabet[rule_number % base])
+#         rule_number //= base
+#
+#     # Pad with zeros (or '0' equivalents for the base) to the desired length
+#     while len(digits) < length:
+#         digits.append(alphabet[0])
+#
+#     return ''.join(reversed(digits))

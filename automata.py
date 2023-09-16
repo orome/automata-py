@@ -34,6 +34,100 @@ class SliceSpec:
         return slice(self.start_step, self.start_step + self.steps)
 
 
+class Rule:
+    def __init__(self, rule_number, base=2, length=None):
+        # Validate the rule number
+        # if rule_number < 0 or rule_number >= base ** (base ** 2):
+        #     raise CellularAutomataError("Invalid rule number. Must be between 0 and", base ** (base ** 2) - 1)
+
+        # Set properties
+        self.rule_number = rule_number
+        self.base = base
+        self.length = length
+
+        # Convert rule number to base representation
+        self.encoding = self._encode(self.rule_number, self.base, self.length)
+
+    @staticmethod
+    def _encode(rule_number, base=2, length=None, range=1):
+        """
+        Converts a rule number to its representation in the given base.
+        """
+        if length is None:
+            length = base ** (1+2*range)  # This is a default, but might need to be adjusted based on context
+
+        alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        if base > len(alphabet):
+            raise ValueError(f"Base too large. Can't handle base > {len(alphabet)}")
+
+        digits = []
+        while rule_number:
+            digits.append(alphabet[rule_number % base])
+            rule_number //= base
+
+        # Pad with zeros (or '0' equivalents for the base) to the desired length
+        while len(digits) < length:
+            digits.append(alphabet[0])
+
+        return ''.join(reversed(digits))
+
+    # A method to take an encoding and a base and return a rule number
+    @staticmethod
+    def _decode(encoding, base=2):
+        """
+        Converts a rule encoded in the given base to its rule number.
+        """
+        alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        if base > len(alphabet):
+            raise ValueError(f"Base too large. Can't handle base > {len(alphabet)}")
+
+        rule_number = 0
+        for digit in encoding:
+            rule_number = rule_number * base + alphabet.index(digit)
+        return rule_number
+
+    def _get_display(self, gap=0.2, fig_width=12, vertical_shift=0.5, grid_color='black', grid_width=0.5):
+
+        def draw_custom_cell(x, y, d, cell_size=1):
+            colors = {'0': 'white', '1': 'black'}
+            cell_color = colors[d]
+            rect = Rectangle((x, y), cell_size, cell_size,
+                             edgecolor=grid_color, facecolor=cell_color, linewidth=grid_width)
+            ax.add_patch(rect)
+
+        # !!! - Currently hardcoded for binary only <<<
+        # Define the 8 possible 3-bit configurations
+        configurations = ['111', '110', '101', '100', '011', '010', '001', '000']
+
+        # Create a new figure and axis
+        fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
+        ax.set_xlim(-0.25, 4*len(configurations)-0.75)
+        ax.set_ylim(0, 2.5)
+        ax.set_aspect('equal')
+        ax.axis('off')
+
+        # Adjust the vertical position using the vertical_shift
+        y_top = 2 - gap - vertical_shift
+        y_bottom = 1 - 2 * gap - vertical_shift
+
+        # Iterate over each configuration and draw it followed by its output
+        for idx, config in enumerate(configurations):
+            output = self.encoding[idx]
+            # Draw the 3-bit configuration
+            for i, digit in enumerate(config):
+                draw_custom_cell(i + idx * 4, y_top, digit)
+
+            # Draw the output below the configuration, with a gap
+            draw_custom_cell(idx * 4 + 1, y_bottom, output)
+
+        plt.tight_layout()
+        return fig, ax
+
+    def display(self, *args, **kwargs):
+        _, _ = self._get_display(*args, **kwargs)
+        plt.show()
+
+
 class CellularAutomata:
     def __init__(self, rule_number, initial_conditions,
                  frame_width=101, frame_steps=200,
@@ -55,8 +149,9 @@ class CellularAutomata:
         self.frame_steps = frame_steps
         self.boundary_condition = boundary_condition
 
+        # !!! - Currently hardcoded for binary only <<<
         # Convert rule number to binary representation
-        self.rule_binary = self._rule_number_to_binary(self.rule_number)
+        self.rule = Rule(self.rule_number)
 
         # Initialize the lattice with zeros
         self._lattice = np.zeros((self.frame_steps, self.frame_width), dtype=int)
@@ -80,12 +175,12 @@ class CellularAutomata:
             self._validate_slice_bounds(slice_steps, check_bounds=True)
         return self._lattice[slice_steps.range()]
 
-    @staticmethod
-    def _rule_number_to_binary(rule_number):
-        """
-        Converts a rule number to its binary representation.
-        """
-        return format(rule_number, '08b')
+    # @staticmethod
+    # def _rule_number_to_binary(rule_number):
+    #     """
+    #     Converts a rule number to its binary representation.
+    #     """
+    #     return format(rule_number, '08b')
 
     def _get_boundary_values(self, current_row):
         """
@@ -116,7 +211,7 @@ class CellularAutomata:
             patterns = left_neighbors * 4 + center_neighbors * 2 + right_neighbors
 
             # Use the patterns to index into the rule's binary representation and update the entire next row
-            self._lattice[row] = [int(self.rule_binary[7 - pattern]) for pattern in patterns]
+            self._lattice[row] = [int(self.rule.encoding[7 - pattern]) for pattern in patterns]
 
     def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
         """
@@ -240,70 +335,3 @@ class CellularAutomata:
     def display(self, *args, **kwargs):
         _, _ = self.get_display(*args, **kwargs)
         plt.show()
-
-    @staticmethod
-    def _get_encoded_rule_display(rule_encoded, fig_width, gap, vertical_shift, grid_color, grid_width):
-
-        def draw_custom_cell(x, y, d, cell_size=1):
-            colors = {'0': 'white', '1': 'black'}
-            cell_color = colors[d]
-            rect = Rectangle((x, y), cell_size, cell_size,
-                             edgecolor=grid_color, facecolor=cell_color, linewidth=grid_width)
-            ax.add_patch(rect)
-
-        # Define the 8 possible 3-bit configurations
-        configurations = ['111', '110', '101', '100', '011', '010', '001', '000']
-
-        # Create a new figure and axis
-        fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
-        ax.set_xlim(-0.25, 4*len(configurations)-0.75)
-        ax.set_ylim(0, 2.5)
-        ax.set_aspect('equal')
-        ax.axis('off')
-
-        # Adjust the vertical position using the vertical_shift
-        y_top = 2 - gap - vertical_shift
-        y_bottom = 1 - 2 * gap - vertical_shift
-
-        # Iterate over each configuration and draw it followed by its output
-        for idx, config in enumerate(configurations):
-            output = rule_encoded[idx]
-            # Draw the 3-bit configuration
-            for i, digit in enumerate(config):
-                draw_custom_cell(i + idx * 4, y_top, digit)
-
-            # Draw the output below the configuration, with a gap
-            draw_custom_cell(idx * 4 + 1, y_bottom, output)
-
-        plt.tight_layout()
-        return fig, ax
-
-    def get_rule_display(self, gap=0.2, fig_width=12, vertical_shift=0.5, grid_color='black', grid_width=0.5):
-        return self._get_encoded_rule_display(self.rule_binary, fig_width, gap, vertical_shift, grid_color, grid_width)
-
-    def display_rule(self, *args, **kwargs):
-        _, _ = self.get_rule_display(*args, **kwargs)
-        plt.show()
-
-
-# def rule_number_to_base(rule_number, base=2, length=None):
-#     """
-#     Converts a rule number to its representation in the given base.
-#     """
-#     if length is None:
-#         length = base ** 2  # This is a default, but might need to be adjusted based on context
-#
-#     alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-#     if base > len(alphabet):
-#         raise ValueError(f"Base too large. Can't handle base > {len(alphabet)}")
-#
-#     digits = []
-#     while rule_number:
-#         digits.append(alphabet[rule_number % base])
-#         rule_number //= base
-#
-#     # Pad with zeros (or '0' equivalents for the base) to the desired length
-#     while len(digits) < length:
-#         digits.append(alphabet[0])
-#
-#     return ''.join(reversed(digits))

@@ -1,6 +1,6 @@
 """
 A simple cellular automata based on those discussed in Wolfram's A New Kind of Science.
-Currently limited to simple elementary (1D, two-state, immediate neighbor) automata,
+Currently limited to simple elementary (1D, multi-state, immediate neighbor) automata,
 using various boundary conditions.
 """
 
@@ -44,60 +44,64 @@ class Rule:
         self.rule_number = rule_number
         self.base = base
         self.length = length
+        self.input_range = 1 # TBD - generalize to allow for larger neighborhoods, using argument
+        # !!! - CellularAutomata currently makes no use of input_range; range of 1 is hard coded there
 
         # Convert rule number to base representation
-        self.encoding = self._encode(self.rule_number, self.base, self.length)
+        self.encoding = self._encode(self.rule_number, self.base, self.input_range, self.length)
+
+    ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def _encode(rule_number, base=2, length=None, range=1):
+    def _encode(rule_number, base=2, input_range=1, length=None):
         """
         Converts a rule number to its representation in the given base.
         """
         if length is None:
-            length = base ** (1+2*range)  # This is a default, but might need to be adjusted based on context
+            length = base ** (1+2*input_range)
 
-        alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        if base > len(alphabet):
-            raise ValueError(f"Base too large. Can't handle base > {len(alphabet)}")
+        if base > len(Rule.ALPHABET):
+            raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
 
         digits = []
         while rule_number:
-            digits.append(alphabet[rule_number % base])
+            digits.append(Rule.ALPHABET[rule_number % base])
             rule_number //= base
 
         # Pad with zeros (or '0' equivalents for the base) to the desired length
         while len(digits) < length:
-            digits.append(alphabet[0])
+            digits.append(Rule.ALPHABET[0])
 
         return ''.join(reversed(digits))
 
-    # A method to take an encoding and a base and return a rule number
     @staticmethod
     def _decode(encoding, base=2):
         """
         Converts a rule encoded in the given base to its rule number.
         """
-        alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        if base > len(alphabet):
-            raise ValueError(f"Base too large. Can't handle base > {len(alphabet)}")
+        if base > len(Rule.ALPHABET):
+            raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
 
         rule_number = 0
         for digit in encoding:
-            rule_number = rule_number * base + alphabet.index(digit)
+            rule_number = rule_number * base + Rule.ALPHABET.index(digit)
         return rule_number
 
-    def _get_display(self, gap=0.2, fig_width=12, vertical_shift=0.5, grid_color='black', grid_width=0.5):
+    def get_display(self, gap=0.2, fig_width=12, vertical_shift=0.5, grid_color='black', grid_width=0.5):
+
+        # TBD - Repeated in code for CellularAutomata.get_display, make into utility function; use one system
+        colors = {k: str(v) for k, v in zip(Rule.ALPHABET[:self.base], np.linspace(1, 0, self.base))}
 
         def draw_custom_cell(x, y, d, cell_size=1):
-            colors = {'0': 'white', '1': 'black'}
             cell_color = colors[d]
             rect = Rectangle((x, y), cell_size, cell_size,
                              edgecolor=grid_color, facecolor=cell_color, linewidth=grid_width)
             ax.add_patch(rect)
 
-        # !!! - Currently hardcoded for binary only <<<
-        # Define the 8 possible 3-bit configurations
-        configurations = ['111', '110', '101', '100', '011', '010', '001', '000']
+        # Generate all configurations, of a given length, in order for a given base, using list comprehension
+        input_span = 2*self.input_range+1
+        configurations = [self._encode(i, self.base, length=input_span) for i in range(self.base ** input_span)]
+        configurations.reverse()
 
         # Create a new figure and axis
         fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
@@ -124,12 +128,12 @@ class Rule:
         return fig, ax
 
     def display(self, *args, **kwargs):
-        _, _ = self._get_display(*args, **kwargs)
+        _, _ = self.get_display(*args, **kwargs)
         plt.show()
 
 
 class CellularAutomata:
-    def __init__(self, rule_number, initial_conditions,
+    def __init__(self, rule_number, initial_conditions, base=2, length=None,
                  frame_width=101, frame_steps=200,
                  boundary_condition="zero"):
         # Validate the rule number
@@ -149,9 +153,7 @@ class CellularAutomata:
         self.frame_steps = frame_steps
         self.boundary_condition = boundary_condition
 
-        # !!! - Currently hardcoded for binary only <<<
-        # Convert rule number to binary representation
-        self.rule = Rule(self.rule_number)
+        self.rule = Rule(self.rule_number, base, length)
 
         # Initialize the lattice with zeros
         self._lattice = np.zeros((self.frame_steps, self.frame_width), dtype=int)
@@ -174,13 +176,6 @@ class CellularAutomata:
         else:
             self._validate_slice_bounds(slice_steps, check_bounds=True)
         return self._lattice[slice_steps.range()]
-
-    # @staticmethod
-    # def _rule_number_to_binary(rule_number):
-    #     """
-    #     Converts a rule number to its binary representation.
-    #     """
-    #     return format(rule_number, '08b')
 
     def _get_boundary_values(self, current_row):
         """
@@ -283,13 +278,18 @@ class CellularAutomata:
                     highlights: [HighlightBounds] = (HighlightBounds(),),
                     slice_steps: SliceSpec = None,
                     highlight_mask=0.3, grid_color=None, grid_width=0.5,
-                    cell_colors=('white', 'black'),
+                    cell_colors=None,
                     check_highlight_bounds=True):
         """
         Displays the cellular automaton lattice
         optionally highlighting a frame within it and
         optionally showing a grid around the cells.
         """
+
+        # TBD - Repeated in code for Rule.get_display, make into utility function; use one system (dict or list)
+        if cell_colors is None:
+            cell_colors = [str(c) for c in np.linspace(1, 0, self.rule.base)]
+
         for highlight in highlights:
             self._validate_highlight_bounds(highlight, check_bounds=check_highlight_bounds)
 

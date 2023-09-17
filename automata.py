@@ -36,16 +36,19 @@ class SliceSpec:
 
 class Rule:
     def __init__(self, rule_number, base=2, length=None):
+
+        self.input_range = 1 # TBD - generalize to allow for larger neighborhoods, using argument
+        # !!! - CellularAutomata currently makes no use of input_range; range of 1 is hard coded there
         # Validate the rule number
-        # if rule_number < 0 or rule_number >= base ** (base ** 2):
-        #     raise CellularAutomataError("Invalid rule number. Must be between 0 and", base ** (base ** 2) - 1)
+        input_span = 2*self.input_range + 1
+        n_rules = base ** (base ** input_span)
+        if rule_number < 0 or rule_number > n_rules - 1:
+            raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {n_rules - 1}.")
 
         # Set properties
         self.rule_number = rule_number
         self.base = base
         self.length = length
-        self.input_range = 1 # TBD - generalize to allow for larger neighborhoods, using argument
-        # !!! - CellularAutomata currently makes no use of input_range; range of 1 is hard coded there
 
         # Convert rule number to base representation
         self.encoding = self._encode(self.rule_number, self.base, self.input_range, self.length)
@@ -136,9 +139,6 @@ class CellularAutomata:
     def __init__(self, rule_number, initial_conditions, base=2, length=None,
                  frame_width=101, frame_steps=200,
                  boundary_condition="zero"):
-        # Validate the rule number
-        if rule_number < 0 or rule_number > 255:
-            raise CellularAutomataError("Invalid rule number. Must be between 0 and 255.")
 
         # Validate boundary condition
         valid_boundary_conditions = ["zero", "periodic", "one"]
@@ -148,7 +148,6 @@ class CellularAutomata:
 
         # Set properties
         self.rule_number = rule_number
-        self.initial_conditions = initial_conditions
         self.frame_width = frame_width
         self.frame_steps = frame_steps
         self.boundary_condition = boundary_condition
@@ -158,13 +157,22 @@ class CellularAutomata:
         # Initialize the lattice with zeros
         self._lattice = np.zeros((self.frame_steps, self.frame_width), dtype=int)
 
-        # Set the initial conditions
+        # CHANGE: Process initial_conditions as a string and center on the 0th step
+        # If the string length is even, pad it with a '0' at the left end
+        if len(initial_conditions) % 2 == 0:
+            initial_conditions = '0' + initial_conditions
         center = self.frame_width // 2
-        for idx in initial_conditions:
-            # Check that all nonzero initial conditions are within the frame
-            if center + idx < 0 or center + idx >= self.frame_width:
-                raise CellularAutomataError("Initial condition at index", str(idx), "is outside of the frame.")
-            self._lattice[0, center + idx] = 1
+        start = center - len(initial_conditions) // 2
+
+        # Check for overflow of initial conditions
+        if start < 0 or start + len(initial_conditions) > self.frame_width:
+            raise CellularAutomataError("Initial conditions overflow the frame boundaries when centered.")
+
+        for idx, char in enumerate(initial_conditions):
+            value = Rule.ALPHABET.index(char)
+            if value >= base:
+                raise CellularAutomataError(f"Initial condition contains invalid symbol '{char}'.")
+            self._lattice[0, start + idx] = value
 
         # Compute the automaton
         self._compute_automaton()
@@ -202,11 +210,11 @@ class CellularAutomata:
             center_neighbors = extended_current_row[1:-1]
             right_neighbors = extended_current_row[2:]
 
-            # Form the 3-bit binary numbers for each cell in parallel
-            patterns = left_neighbors * 4 + center_neighbors * 2 + right_neighbors
+            # CHANGE: Form patterns considering the current base
+            patterns = left_neighbors * self.rule.base ** 2 + center_neighbors * self.rule.base + right_neighbors
 
-            # Use the patterns to index into the rule's binary representation and update the entire next row
-            self._lattice[row] = [int(self.rule.encoding[7 - pattern]) for pattern in patterns]
+            # CHANGE: Use the patterns to index into the rule's encoding considering the current base
+            self._lattice[row] = [int(self.rule.encoding[self.rule.base ** 3 - 1 - pattern]) for pattern in patterns]
 
     def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
         """

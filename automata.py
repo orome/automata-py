@@ -37,7 +37,7 @@ class SliceSpec:
 class Rule:
     def __init__(self, rule_number, base=2, length=None):
 
-        self.input_range = 1 # TBD - generalize to allow for larger neighborhoods, using argument
+        self.input_range = 1  # TBD - generalize to allow for larger neighborhoods, using argument
         # !!! - CellularAutomata currently makes no use of input_range; range of 1 is hard coded there
         # Validate the rule number
         input_span = 2*self.input_range + 1
@@ -317,7 +317,7 @@ class CellularAutomata:
 
         # Plotting
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
-        ax.imshow(self._lattice[slice_steps.range()], alpha=mask[slice_steps.range()],
+        ax.imshow(self._lattice[slice_steps.range()]/(self.rule.base-1), alpha=mask[slice_steps.range()],
                   cmap=ListedColormap(cell_colors),
                   aspect='equal', interpolation='none')
 

@@ -39,29 +39,33 @@ class Rule:
 
         self.input_range = 1  # TBD - generalize to allow for larger neighborhoods, using argument
         # !!! - CellularAutomata currently makes no use of input_range; range of 1 is hard coded there
-        # Validate the rule number
-        input_span = 2*self.input_range + 1
-        n_rules = base ** (base ** input_span)
-        if rule_number < 0 or rule_number > n_rules - 1:
-            raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {n_rules - 1}.")
 
-        # Set properties
-        self.rule_number = rule_number
         self.base = base
+        self.rule_number = rule_number
         self.length = length
 
+        self.input_span = 2*self.input_range + 1
+        self.rules = Rule.n_rules(base, self.input_span)
+        # Validate the rule number
+        if rule_number < 0 or rule_number > self.rules - 1:
+            raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {self.rules - 1}.")
+
         # Convert rule number to base representation
-        self.encoding = self._encode(self.rule_number, self.base, self.input_range, self.length)
+        self.encoding = self._encode(self.rule_number, self.base, self.input_span, self.length)
+
+    @staticmethod
+    def n_rules(base, input_span):
+        return base ** (base ** input_span)
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def _encode(rule_number, base=2, input_range=1, length=None):
+    def _encode(rule_number, base=2, input_span=3, length=None):
         """
         Converts a rule number to its representation in the given base.
         """
         if length is None:
-            length = base ** (1+2*input_range)
+            length = base ** input_span
 
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
@@ -102,8 +106,8 @@ class Rule:
             ax.add_patch(rect)
 
         # Generate all configurations, of a given length, in order for a given base, using list comprehension
-        input_span = 2*self.input_range+1
-        configurations = [self._encode(i, self.base, length=input_span) for i in range(self.base ** input_span)]
+        configurations = [self._encode(i, self.base, length=self.input_span) for
+                          i in range(self.base ** self.input_span)]
         configurations.reverse()
 
         # Create a new figure and axis

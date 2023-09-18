@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Rectangle
+import matplotlib.gridspec as gridspec
 
 
 class CellularAutomataError(ValueError):
@@ -94,7 +95,7 @@ class Rule:
             rule_number = rule_number * base + Rule.ALPHABET.index(digit)
         return rule_number
 
-    def get_display(self, gap=0.2, fig_width=12, vertical_shift=0.5, grid_color='black', grid_width=0.5):
+    def _plot_display(self, ax, gap=0.2, vertical_shift=0.5, grid_color='black', grid_width=0.5):
 
         # TBD - Repeated in code for CellularAutomata.get_display, make into utility function; use one system
         colors = {k: str(v) for k, v in zip(Rule.ALPHABET[:self.base], np.linspace(1, 0, self.base))}
@@ -111,7 +112,7 @@ class Rule:
         configurations.reverse()
 
         # Create a new figure and axis
-        fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
+        # fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
         ax.set_xlim(-0.25, 4*len(configurations)-0.75)
         ax.set_ylim(0, 2.5)
         ax.set_aspect('equal')
@@ -131,6 +132,12 @@ class Rule:
             # Draw the output below the configuration, with a gap
             draw_custom_cell(idx * 4 + 1, y_bottom, output)
 
+        # plt.tight_layout()
+        # return fig, ax
+
+    def get_display(self, fig_width=12, gap=0.2, vertical_shift=0.5, grid_color='black', grid_width=0.5):
+        fig, ax = plt.subplots(figsize=(fig_width, fig_width * 2.5 / (2 * (self.base ** self.input_span))))
+        self._plot_display(ax, gap, vertical_shift, grid_color, grid_width)
         plt.tight_layout()
         return fig, ax
 
@@ -286,12 +293,12 @@ class CellularAutomata:
             else:
                 slice_spec.steps = self.frame_steps - slice_spec.start_step
 
-    def get_display(self, fig_width=12,
-                    highlights: [HighlightBounds] = (HighlightBounds(),),
-                    slice_steps: SliceSpec = None,
-                    highlight_mask=0.3, grid_color=None, grid_width=0.5,
-                    cell_colors=None,
-                    check_highlight_bounds=True):
+    def _plot_display(self, ax,
+                      highlights: [HighlightBounds] = (HighlightBounds(),),
+                      slice_steps: SliceSpec = None,
+                      highlight_mask=0.3, grid_color=None, grid_width=0.5,
+                      cell_colors=None,
+                      check_highlight_bounds=True):
         """
         Displays the cellular automaton lattice
         optionally highlighting a frame within it and
@@ -320,7 +327,6 @@ class CellularAutomata:
             self._validate_slice_bounds(slice_steps, check_bounds=False)
 
         # Plotting
-        fig, ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
         ax.imshow(self._lattice[slice_steps.range()]/(self.rule.base-1), alpha=mask[slice_steps.range()],
                   cmap=ListedColormap(cell_colors),
                   aspect='equal', interpolation='none')
@@ -341,9 +347,56 @@ class CellularAutomata:
 
         plt.setp(ax.spines.values(), color=grid_color, linewidth=grid_width)
 
-        plt.tight_layout()
-        return fig, ax
+        # lt.tight_layout()
+        # return fig, ax
+
+    def get_display(self, fig_width=12,
+                    highlights: [HighlightBounds] = (HighlightBounds(),),
+                    slice_steps: SliceSpec = None,
+                    highlight_mask=0.3, grid_color=None, grid_width=0.5,
+                    cell_colors=None,
+                    check_highlight_bounds=True, show_rule=False):
+
+        if not show_rule:
+            fig, lattice_ax = plt.subplots(figsize=(fig_width, fig_width * self.frame_steps / self.frame_width))
+            self._plot_display(lattice_ax, highlights, slice_steps,
+                               highlight_mask, grid_color, grid_width, cell_colors, check_highlight_bounds)
+            plt.tight_layout()
+            return fig, lattice_ax
+        else:
+            # Create a dummy figure to compute rule's aspect ratio
+            # !!! - This seems pretty stupid, there has to be a better way than calling self.rule._plot_display twice
+            dummy_fig, dummy_ax = plt.subplots()
+            self.rule._plot_display(dummy_ax, 0.2, 0.5, 'black', grid_width)
+            rule_aspect_ratio = (dummy_ax.get_xlim()[1] - dummy_ax.get_xlim()[0]) / (dummy_ax.get_ylim()[1] - dummy_ax.get_ylim()[0])
+            plt.close(dummy_fig)
+
+            # Calculate heights
+            h_rule = fig_width / rule_aspect_ratio
+            h_lattice = fig_width * self.frame_steps / self.frame_width
+
+            # Create main figure with adjusted height
+            total_height = h_rule + h_lattice + 0.05 * fig_width  # Adding small gap
+            fig = plt.figure(figsize=(fig_width, total_height))
+
+            # GridSpec layout
+            gs = gridspec.GridSpec(2, 1, height_ratios=[h_rule, h_lattice], hspace=0.0005*fig_width)  # Small gap
+
+            # Rule plot
+            rule_ax = plt.subplot(gs[0])
+            self.rule._plot_display(rule_ax, 0.2, 0.5, 'black', grid_width)
+
+            # Lattice plot
+            lattice_ax = plt.subplot(gs[1])
+            self._plot_display(lattice_ax, highlights, slice_steps,
+                               highlight_mask, grid_color, grid_width, cell_colors, check_highlight_bounds)
+
+            #plt.tight_layout()
+            return fig, (rule_ax, lattice_ax)
 
     def display(self, *args, **kwargs):
         _, _ = self.get_display(*args, **kwargs)
         plt.show()
+
+
+# fig_width*2.5/(2* (self.rule.base ** self.rule.input_span))

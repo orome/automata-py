@@ -26,6 +26,7 @@ class HighlightBounds:
     offset: int = None
     width: int = None
 
+
 @dataclass
 class SliceSpec:
     start_step: int = None
@@ -232,7 +233,7 @@ class CellularAutomata:
             center_neighbors = extended_current_row[1:-1]
             right_neighbors = extended_current_row[2:]
 
-            #Form patterns considering the current base
+            # Form patterns considering the current base
             patterns = left_neighbors * self.rule.base ** 2 + center_neighbors * self.rule.base + right_neighbors
 
             # Use the patterns to index into the rule's encoding considering the current base
@@ -314,7 +315,7 @@ class CellularAutomata:
         grid_width: float = 0.5
         cell_colors: [str] = None
         check_highlight_bounds: bool = True
-        show_rule: bool = False
+        # show_rule: bool = False
 
     def _plot_display(self, ax, display_params: DisplayParams = DisplayParams()):
         """
@@ -367,9 +368,10 @@ class CellularAutomata:
 
         plt.setp(ax.spines.values(), color=display_params.grid_color, linewidth=display_params.grid_width)
 
-    def get_display(self, display_params: DisplayParams = DisplayParams()):
+    def get_display(self, display_params: DisplayParams = DisplayParams(),
+                    rule_display_params: Rule.DisplayParams = None):
 
-        if not display_params.show_rule:
+        if rule_display_params is None:
             fig, lattice_ax = plt.subplots(figsize=(display_params.fig_width,
                                                     display_params.fig_width * self.frame_steps / self.frame_width))
             self._plot_display(lattice_ax, display_params)
@@ -395,7 +397,8 @@ class CellularAutomata:
 
             # Rule plot
             rule_ax = plt.subplot(gs[0])
-            self.rule._plot_display(rule_ax)
+            # noinspection PyProtectedMember
+            self.rule._plot_display(rule_ax, rule_display_params)
 
             # Lattice plot
             lattice_ax = plt.subplot(gs[1])
@@ -403,6 +406,7 @@ class CellularAutomata:
 
             return fig, (rule_ax, lattice_ax)
 
-    def display(self, display_params: DisplayParams = DisplayParams()):
-        _, _ = self.get_display(display_params)
+    def display(self, display_params: DisplayParams = DisplayParams(),
+                rule_display_params: Rule.DisplayParams = None):
+        _, _ = self.get_display(display_params, rule_display_params)
         plt.show()

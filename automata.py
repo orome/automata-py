@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Rectangle
 import matplotlib.gridspec as gridspec
-
+import inspect
 
 class CellularAutomataError(ValueError):
     def __init__(self, *args: str):
@@ -117,6 +117,8 @@ class Rule:
         ax.set_ylim(0, 2.5)
         ax.set_aspect('equal')
         ax.axis('off')
+        # REV - Cleaner way to get aspect ratio?
+        height_ratio = ((ax.get_xlim()[1] - ax.get_xlim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0]))
 
         # Adjust the vertical position using the vertical_shift
         y_top = 2 - gap - vertical_shift
@@ -133,16 +135,16 @@ class Rule:
             draw_custom_cell(idx * 4 + 1, y_bottom, output)
 
         # plt.tight_layout()
-        # return fig, ax
+        return height_ratio
 
     def get_display(self, fig_width=12, gap=0.2, vertical_shift=0.5, grid_color='black', grid_width=0.5):
         fig, ax = plt.subplots(figsize=(fig_width, fig_width * 2.5 / (2 * (self.base ** self.input_span))))
-        self._plot_display(ax, gap, vertical_shift, grid_color, grid_width)
+        height_ratio = self._plot_display(ax, gap, vertical_shift, grid_color, grid_width)
         plt.tight_layout()
-        return fig, ax
+        return fig, ax, height_ratio
 
     def display(self, *args, **kwargs):
-        _, _ = self.get_display(*args, **kwargs)
+        _, _, _ = self.get_display(*args, **kwargs)
         plt.show()
 
 
@@ -365,14 +367,12 @@ class CellularAutomata:
             return fig, lattice_ax
         else:
             # Create a dummy figure to compute rule's aspect ratio
-            # !!! - This seems pretty stupid, there has to be a better way than calling self.rule._plot_display twice
-            dummy_fig, dummy_ax = plt.subplots()
-            self.rule._plot_display(dummy_ax, 0.2, 0.5, 'black', grid_width)
-            rule_aspect_ratio = (dummy_ax.get_xlim()[1] - dummy_ax.get_xlim()[0]) / (dummy_ax.get_ylim()[1] - dummy_ax.get_ylim()[0])
+            # REV - This seems pretty stupid, there has to be a better way than calling self.rule._plot_display twice
+            dummy_fig, dummy_ax, rule_height_ratio = self.rule.get_display()
             plt.close(dummy_fig)
 
             # Calculate heights
-            h_rule = fig_width / rule_aspect_ratio
+            h_rule = fig_width / rule_height_ratio
             h_lattice = fig_width * self.frame_steps / self.frame_width
 
             # Create main figure with adjusted height
@@ -380,18 +380,24 @@ class CellularAutomata:
             fig = plt.figure(figsize=(fig_width, total_height))
 
             # GridSpec layout
-            gs = gridspec.GridSpec(2, 1, height_ratios=[h_rule, h_lattice], hspace=0.0005*fig_width)  # Small gap
+            gs = gridspec.GridSpec(2, 1, height_ratios=[h_rule, h_lattice], hspace=0.0005*fig_width)
 
             # Rule plot
             rule_ax = plt.subplot(gs[0])
-            self.rule._plot_display(rule_ax, 0.2, 0.5, 'black', grid_width)
+
+            # !!! - Ony works if the defaults are specified in the function definition
+            spec = inspect.getfullargspec(self.rule._plot_display)
+            args_with_defaults = dict(zip(spec.args[-len(spec.defaults):], spec.defaults))
+            self.rule._plot_display(rule_ax, **args_with_defaults)
+            # REV - Use default args for rule plot without having to know them?
+            #self.rule._plot_display(rule_ax, 0.2, 0.5, 'black', 0.5)
 
             # Lattice plot
             lattice_ax = plt.subplot(gs[1])
             self._plot_display(lattice_ax, highlights, slice_steps,
                                highlight_mask, grid_color, grid_width, cell_colors, check_highlight_bounds)
 
-            #plt.tight_layout()
+            # plt.tight_layout()
             return fig, (rule_ax, lattice_ax)
 
     def display(self, *args, **kwargs):

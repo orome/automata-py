@@ -233,10 +233,10 @@ class CellularAutomata:
             center_neighbors = extended_current_row[1:-1]
             right_neighbors = extended_current_row[2:]
 
-            # CHANGE: Form patterns considering the current base
+            #Form patterns considering the current base
             patterns = left_neighbors * self.rule.base ** 2 + center_neighbors * self.rule.base + right_neighbors
 
-            # CHANGE: Use the patterns to index into the rule's encoding considering the current base
+            # Use the patterns to index into the rule's encoding considering the current base
             self._lattice[row] = [int(self.rule.encoding[self.rule.base ** 3 - 1 - pattern]) for pattern in patterns]
 
     def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
@@ -310,7 +310,7 @@ class CellularAutomata:
         fig_width: float = 12
         highlights: [HighlightBounds] = (HighlightBounds(),)
         slice_steps: SliceSpec = None
-        highlight_mask : float = 0.3
+        highlight_mask: float = 0.3
         grid_color: str = None
         grid_width: float = 0.5
         cell_colors: [str] = None
@@ -368,9 +368,6 @@ class CellularAutomata:
 
         plt.setp(ax.spines.values(), color=display_params.grid_color, linewidth=display_params.grid_width)
 
-        # lt.tight_layout()
-        # return fig, ax
-
     def get_display(self, display_params: DisplayParams = DisplayParams()):
 
         if not display_params.show_rule:
@@ -405,12 +402,8 @@ class CellularAutomata:
             lattice_ax = plt.subplot(gs[1])
             self._plot_display(lattice_ax, display_params)
 
-            # plt.tight_layout()
             return fig, (rule_ax, lattice_ax)
 
     def display(self, display_params: DisplayParams = DisplayParams()):
         _, _ = self.get_display(display_params)
         plt.show()
-
-
-# fig_width*2.5/(2* (self.rule.base ** self.rule.input_span))

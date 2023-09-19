@@ -19,18 +19,17 @@ class CellularAutomataError(ValueError):
 
 
 # A simple class for specifying highlighting bounds
+@dataclass
 class HighlightBounds:
-    def __init__(self, start_step=None, steps=None, offset=None, width=None):
-        self.start_step = start_step
-        self.steps = steps
-        self.offset = offset
-        self.width = width
+    start_step: int = None
+    steps: int = None
+    offset: int = None
+    width: int = None
 
-
+@dataclass
 class SliceSpec:
-    def __init__(self, start_step=None, steps=None):
-        self.start_step = start_step
-        self.steps = steps
+    start_step: int = None
+    steps: int = None
 
     def range(self):
         return slice(self.start_step, self.start_step + self.steps)
@@ -40,7 +39,7 @@ class Rule:
     def __init__(self, rule_number, base=2, length=None):
 
         self.input_range = 1  # TBD - generalize to allow for larger neighborhoods, using argument
-        # !!! - CellularAutomata currently makes no use of input_range; range of 1 is hard coded there
+        # !!! - CellularAutomata currently makes no use of input_range; input_range of 1 is hard coded there
 
         self.base = base
         self.rule_number = rule_number

@@ -6,8 +6,9 @@ using various boundary conditions.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
+# from matplotlib.colors import ListedColormap
 from matplotlib.patches import Rectangle
+import matplotlib
 import matplotlib.gridspec as gridspec
 from dataclasses import dataclass
 
@@ -61,6 +62,9 @@ class Rule:
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
+    def get_color_dict(self, color_list):
+        return {e: c for e, c in zip(Rule.ALPHABET[:self.base], color_list)}
+
     @staticmethod
     def _encode(rule_number, base=2, input_span=3, length=None):
         """
@@ -101,12 +105,20 @@ class Rule:
         fig_width: float = 12
         gap: float = 0.2
         vertical_shift: float = 0.5
+        cell_colors: [str] = None
         grid_color: str = 'black'
         grid_width: float = 0.5
 
-    def _plot_display(self, ax, display_params: DisplayParams = DisplayParams()):
-        # TBD - Repeated in code for CellularAutomata.get_display, make into utility function; use one system
-        colors = {k: str(v) for k, v in zip(Rule.ALPHABET[:self.base], np.linspace(1, 0, self.base))}
+        @staticmethod
+        def get_default_cell_colors(base):
+            return [str(c) for c in np.linspace(1, 0, base)]
+
+    def _plot_display(self, ax, display_params):
+
+        if display_params.cell_colors is None:
+            display_params.cell_colors = Rule.DisplayParams.get_default_cell_colors(self.base)
+
+        colors = self.get_color_dict(display_params.cell_colors)
 
         def draw_custom_cell(x, y, d, cell_size=1):
             cell_color = colors[d]
@@ -146,14 +158,18 @@ class Rule:
         # plt.tight_layout()
         return height_ratio
 
-    def get_display(self, display_params: DisplayParams = DisplayParams()):
+    def get_display(self, display_params: DisplayParams = None):
+
+        if display_params is None:
+            display_params = Rule.DisplayParams()
+
         fig, ax = plt.subplots(figsize=(display_params.fig_width,
                                         display_params.fig_width * 2.5 / (2 * (self.base ** self.input_span))))
         height_ratio = self._plot_display(ax, display_params)
         plt.tight_layout()
         return fig, ax, height_ratio
 
-    def display(self, display_params: DisplayParams = DisplayParams()):
+    def display(self, display_params: DisplayParams = None):
         _, _, _ = self.get_display(display_params)
         plt.show()
 
@@ -315,18 +331,19 @@ class CellularAutomata:
         grid_width: float = 0.5
         cell_colors: [str] = None
         check_highlight_bounds: bool = True
-        # show_rule: bool = False
 
-    def _plot_display(self, ax, display_params: DisplayParams = DisplayParams()):
+    def _plot_display(self, ax, display_params):
         """
         Displays the cellular automaton lattice
         optionally highlighting a frame within it and
         optionally showing a grid around the cells.
         """
 
-        # TBD - Repeated in code for Rule.get_display, make into utility function; use one system (dict or list)
         if display_params.cell_colors is None:
-            display_params.cell_colors = [str(c) for c in np.linspace(1, 0, self.rule.base)]
+            display_params.cell_colors = Rule.DisplayParams.get_default_cell_colors(self.rule.base)
+
+        # CHANGE: Obtain the colors dictionary directly from the rule object.
+        colors_dict = self.rule.get_color_dict(display_params.cell_colors)
 
         for highlight in display_params.highlights:
             self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
@@ -345,11 +362,19 @@ class CellularAutomata:
             # Otherwise set unspecified or overflowing slice bounds to default values
             self._validate_slice_bounds(display_params.slice_steps, check_bounds=False)
 
-        # Plotting
-        ax.imshow(self._lattice[display_params.slice_steps.range()]/(self.rule.base-1),
-                  alpha=mask[display_params.slice_steps.range()],
-                  cmap=ListedColormap(display_params.cell_colors),
-                  aspect='equal', interpolation='none')
+        # REV - See irf there's a better way to do this
+        # Convert lattice values to their respective encoded representations
+        lattice_encoded = np.vectorize(lambda x: Rule.ALPHABET[x])(self._lattice[display_params.slice_steps.range()])
+        # Convert the encoded lattice data to color using the color's dictionary.
+        color_strings = np.vectorize(colors_dict.get)(lattice_encoded)
+        # Convert the entire color_strings array to an array of RGBA values
+        rgba_values = matplotlib.colors.to_rgba_array(color_strings.ravel())
+        # Reshape the rgba_values to match the shape of the color_strings array with an additional dimension for RGBA
+        rgb_lattice = rgba_values.reshape(*color_strings.shape, 4)
+        # Mask the highlighted region
+        rgb_lattice[..., 3] *= mask[display_params.slice_steps.range()]
+
+        ax.imshow(rgb_lattice, aspect='equal', interpolation='none')
 
         # Add grid with lines around each cell if grid_color is specified
         if display_params.grid_color:
@@ -368,19 +393,29 @@ class CellularAutomata:
 
         plt.setp(ax.spines.values(), color=display_params.grid_color, linewidth=display_params.grid_width)
 
-    def get_display(self, display_params: DisplayParams = DisplayParams(),
-                    rule_display_params: Rule.DisplayParams = None):
+    def get_display(self, display_params: DisplayParams = None,
+                    rule_display_params: Rule.DisplayParams = None,
+                    show_rule: bool = False):
 
-        if rule_display_params is None:
+        if display_params is None:
+            display_params = CellularAutomata.DisplayParams()
+
+        if rule_display_params is not None:
+            show_rule = True
+
+        if not show_rule:
             fig, lattice_ax = plt.subplots(figsize=(display_params.fig_width,
                                                     display_params.fig_width * self.frame_steps / self.frame_width))
             self._plot_display(lattice_ax, display_params)
             plt.tight_layout()
             return fig, lattice_ax
         else:
+            if rule_display_params is None:
+                rule_display_params = Rule.DisplayParams(cell_colors=display_params.cell_colors)
+
             # Create a dummy figure to compute rule's aspect ratio
             # REV - This seems pretty stupid, there has to be a better way than calling self.rule._plot_display twice
-            dummy_fig, dummy_ax, rule_height_ratio = self.rule.get_display()
+            dummy_fig, dummy_ax, rule_height_ratio = self.rule.get_display(rule_display_params)
             plt.close(dummy_fig)
 
             # Calculate heights
@@ -406,7 +441,8 @@ class CellularAutomata:
 
             return fig, (rule_ax, lattice_ax)
 
-    def display(self, display_params: DisplayParams = DisplayParams(),
-                rule_display_params: Rule.DisplayParams = None):
-        _, _ = self.get_display(display_params, rule_display_params)
+    def display(self, display_params: DisplayParams = None,
+                rule_display_params: Rule.DisplayParams = None,
+                show_rule: bool = False):
+        _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()

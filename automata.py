@@ -193,13 +193,14 @@ class CellularAutomata:
 
         self.rule = Rule(self.rule_number, base, length)
 
-        # Initialize the lattice with zeros
-        self._lattice = np.zeros((self.frame_steps, self.frame_width), dtype=int)
+        # CHANGE: Initialize the lattice with zeros as characters
+        self._lattice = np.empty((self.frame_steps, self.frame_width), dtype='<U1')
+        self._lattice.fill(Rule.ALPHABET[0])
 
         # CHANGE: Process initial_conditions as a string and center on the 0th step
         # If the string length is even, pad it with a '0' at the left end
         if len(initial_conditions) % 2 == 0:
-            initial_conditions = '0' + initial_conditions
+            initial_conditions = Rule.ALPHABET[0] + initial_conditions
         center = self.frame_width // 2
         start = center - len(initial_conditions) // 2
 
@@ -208,10 +209,9 @@ class CellularAutomata:
             raise CellularAutomataError("Initial conditions overflow the frame boundaries when centered.")
 
         for idx, char in enumerate(initial_conditions):
-            value = Rule.ALPHABET.index(char)
-            if value >= base:
+            if char not in Rule.ALPHABET[:base]:
                 raise CellularAutomataError(f"Initial condition contains invalid symbol '{char}'.")
-            self._lattice[0, start + idx] = value
+            self._lattice[0, start + idx] = char
 
         # Compute the automaton
         self._compute_automaton()
@@ -229,11 +229,11 @@ class CellularAutomata:
         Returns boundary values based on boundary condition and current row.
         """
         if self.boundary_condition == "zero":
-            return 0, 0
+            return Rule.ALPHABET[0], Rule.ALPHABET[0]
         elif self.boundary_condition == "periodic":
             return current_row[-1], current_row[0]
         elif self.boundary_condition == "one":
-            return 1, 1
+            return Rule.ALPHABET[1], Rule.ALPHABET[1]
 
     def _compute_automaton(self):
         """
@@ -250,10 +250,14 @@ class CellularAutomata:
             right_neighbors = extended_current_row[2:]
 
             # Form patterns considering the current base
-            patterns = left_neighbors * self.rule.base ** 2 + center_neighbors * self.rule.base + right_neighbors
+            patterns = [left + center + right for left, center, right in
+                        zip(left_neighbors, center_neighbors, right_neighbors)]
 
+            # REV - This seems circular and redundant.
             # Use the patterns to index into the rule's encoding considering the current base
-            self._lattice[row] = [int(self.rule.encoding[self.rule.base ** 3 - 1 - pattern]) for pattern in patterns]
+            # noinspection PyProtectedMember
+            self._lattice[row] = [self.rule.encoding[self.rule.base ** 3 - 1 - Rule._decode(pattern, self.rule.base)]
+                                  for pattern in patterns]
 
     def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
         """
@@ -349,7 +353,7 @@ class CellularAutomata:
             self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
 
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
-        mask = np.ones_like(self._lattice) * display_params.highlight_mask
+        mask = np.ones(self._lattice.shape, dtype=float) * display_params.highlight_mask
         for highlight in display_params.highlights:
             mask[highlight.start_step:highlight.start_step + highlight.steps,
                  max(0, (self.frame_width - highlight.width) // 2 + highlight.offset):
@@ -363,10 +367,8 @@ class CellularAutomata:
             self._validate_slice_bounds(display_params.slice_steps, check_bounds=False)
 
         # REV - See irf there's a better way to do this
-        # Convert lattice values to their respective encoded representations
-        lattice_encoded = np.vectorize(lambda x: Rule.ALPHABET[x])(self._lattice[display_params.slice_steps.range()])
         # Convert the encoded lattice data to color using the color's dictionary.
-        color_strings = np.vectorize(colors_dict.get)(lattice_encoded)
+        color_strings = np.vectorize(colors_dict.get)(self._lattice[display_params.slice_steps.range()])
         # Convert the entire color_strings array to an array of RGBA values
         rgba_values = matplotlib.colors.to_rgba_array(color_strings.ravel())
         # Reshape the rgba_values to match the shape of the color_strings array with an additional dimension for RGBA

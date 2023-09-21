@@ -54,12 +54,12 @@ class Rule:
         if rule_number < 0 or rule_number > self.n_rules - 1:
             raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {self.n_rules - 1}.")
 
-        # Convert rule number to base representation
+        # Convert rule number to base representation; also the rule output pattern
         self.encoding = self._encode(self.rule_number, self.base, self.n_input_states)
 
         # Generate all configurations, of a given length, in R-L (following Wolfram) order for a given base
         self.input_states = [self._encode(i, self.base, length=self.input_span) for i in range(self.n_input_states)]
-        self.input_states.reverse()  # REV - Could be done in plotting, where it is relevant?
+        self.input_states.reverse()  # Ordered to match rule number, which corresponds to output order
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -345,7 +345,7 @@ class CellularAutomata:
             # Otherwise set unspecified or overflowing slice bounds to default values
             self._validate_slice_bounds(display_params.slice_steps, check_bounds=False)
 
-        # REV - See irf there's a better way to do this
+        # REV - See if there's a better way to do this
         # Convert the encoded lattice data to color using the color's dictionary.
         color_strings = np.vectorize(colors_dict.get)(self._lattice[display_params.slice_steps.range()])
         # Convert the entire color_strings array to an array of RGBA values

@@ -126,15 +126,15 @@ class Rule:
         y_top = 2 - display_params.gap - display_params.vertical_shift
         y_bottom = 1 - 2 * display_params.gap - display_params.vertical_shift
 
+        # REV - Would this be clearer using a pattern_to_output approach as in the automata class's compute?
         # Iterate over each configuration and draw it followed by its output
-        for idx, config in enumerate(self.input_states):
-            output = self.encoding[idx]
+        for i, config in enumerate(self.input_states):
             # Draw the 3-bit configuration
-            for i, digit in enumerate(config):
-                draw_custom_cell(i + idx * 4, y_top, digit)
-
+            for position, digit in enumerate(config):
+                draw_custom_cell(position + i * 4, y_top, digit)
             # Draw the output below the configuration, with a gap
-            draw_custom_cell(idx * 4 + 1, y_bottom, output)
+            output = self.encoding[i]
+            draw_custom_cell(i * 4 + 1, y_bottom, output)
 
         # plt.tight_layout()
         return height_ratio
@@ -234,11 +234,9 @@ class CellularAutomata:
             patterns = [left + center + right for left, center, right in
                         zip(left_neighbors, center_neighbors, right_neighbors)]
 
-            # REV - This seems circular and redundant.
-            # Use the patterns to index into the rule's encoding considering the current base
-            # noinspection PyProtectedMember
-            self._lattice[row] = [self.rule.encoding[self.rule.base ** 3 - 1 - Rule._decode(pattern, self.rule.base)]
-                                  for pattern in patterns]
+            pattern_to_output = dict(zip(self.rule.input_states, self.rule.encoding))
+            # Use the patterns to directly get the output values from the rule's pattern_to_output dictionary
+            self._lattice[row] = [pattern_to_output[pattern] for pattern in patterns]
 
     def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
         """

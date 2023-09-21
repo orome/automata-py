@@ -38,27 +38,29 @@ class SliceSpec:
 
 
 class Rule:
-    def __init__(self, rule_number, base=2, length=None):
+    def __init__(self, rule_number, base=2):
 
         self.input_range = 1  # TBD - generalize to allow for larger neighborhoods, using argument
         # !!! - CellularAutomata currently makes no use of input_range; input_range of 1 is hard coded there
 
         self.base = base
         self.rule_number = rule_number
-        self.length = length
 
         self.input_span = 2*self.input_range + 1
-        self.rules = Rule.n_rules(base, self.input_span)
+        self.length = base ** self.input_span
+        self.n_input_states = base ** self.input_span
+        self.n_rules = base ** self.n_input_states
+
         # Validate the rule number
-        if rule_number < 0 or rule_number > self.rules - 1:
-            raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {self.rules - 1}.")
+        if rule_number < 0 or rule_number > self.n_rules - 1:
+            raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {self.n_rules - 1}.")
 
         # Convert rule number to base representation
-        self.encoding = self._encode(self.rule_number, self.base, self.input_span, self.length)
+        self.encoding = self._encode(self.rule_number, self.base, self.length)
 
-    @staticmethod
-    def n_rules(base, input_span):
-        return base ** (base ** input_span)
+        # Generate all configurations, of a given length, in order for a given base, using list comprehension
+        self.input_states = [self._encode(i, self.base, length=self.input_span) for i in range(self.n_input_states)]
+        self.input_states.reverse()
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -66,20 +68,17 @@ class Rule:
         return {e: c for e, c in zip(Rule.ALPHABET[:self.base], color_list)}
 
     @staticmethod
-    def _encode(rule_number, base=2, input_span=3, length=None):
+    def _encode(value, base=2, length=None):
         """
-        Converts a rule number to its representation in the given base.
+        Converts a value to its representation in the given base.
         """
-        if length is None:
-            length = base ** input_span
-
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
 
         digits = []
-        while rule_number:
-            digits.append(Rule.ALPHABET[rule_number % base])
-            rule_number //= base
+        while value:
+            digits.append(Rule.ALPHABET[value % base])
+            value //= base
 
         # Pad with zeros (or '0' equivalents for the base) to the desired length
         while len(digits) < length:
@@ -90,7 +89,7 @@ class Rule:
     @staticmethod
     def _decode(encoding, base=2):
         """
-        Converts a rule encoded in the given base to its rule number.
+        Converts a value in a given base to a base 10 value.
         """
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
@@ -127,14 +126,7 @@ class Rule:
                              linewidth=display_params.grid_width)
             ax.add_patch(rect)
 
-        # Generate all configurations, of a given length, in order for a given base, using list comprehension
-        configurations = [self._encode(i, self.base, length=self.input_span) for
-                          i in range(self.base ** self.input_span)]
-        configurations.reverse()
-
-        # Create a new figure and axis
-        # fig, ax = plt.subplots(figsize=(fig_width, fig_width*2.5/(2*len(configurations))))
-        ax.set_xlim(-0.25, 4*len(configurations)-0.75)
+        ax.set_xlim(-0.25, 4*self.n_input_states-0.75)
         ax.set_ylim(0, 2.5)
         ax.set_aspect('equal')
         ax.axis('off')
@@ -146,7 +138,7 @@ class Rule:
         y_bottom = 1 - 2 * display_params.gap - display_params.vertical_shift
 
         # Iterate over each configuration and draw it followed by its output
-        for idx, config in enumerate(configurations):
+        for idx, config in enumerate(self.input_states):
             output = self.encoding[idx]
             # Draw the 3-bit configuration
             for i, digit in enumerate(config):
@@ -175,7 +167,7 @@ class Rule:
 
 
 class CellularAutomata:
-    def __init__(self, rule_number, initial_conditions, base=2, length=None,
+    def __init__(self, rule_number, initial_conditions, base=2,
                  frame_width=101, frame_steps=200,
                  boundary_condition="zero"):
 
@@ -191,7 +183,7 @@ class CellularAutomata:
         self.frame_steps = frame_steps
         self.boundary_condition = boundary_condition
 
-        self.rule = Rule(self.rule_number, base, length)
+        self.rule = Rule(self.rule_number, base)
 
         # CHANGE: Initialize the lattice with zeros as characters
         self._lattice = np.empty((self.frame_steps, self.frame_width), dtype='<U1')

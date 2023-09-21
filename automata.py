@@ -46,21 +46,20 @@ class Rule:
         self.base = base
         self.rule_number = rule_number
 
-        self.input_span = 2*self.input_range + 1
-        self.length = base ** self.input_span
-        self.n_input_states = base ** self.input_span
-        self.n_rules = base ** self.n_input_states
+        self.input_span = 2 * self.input_range + 1      # Number of cells in the input neighborhood
+        self.n_input_states = base ** self.input_span   # Number of possible input states
+        self.n_rules = base ** self.n_input_states      # Number of possible rules for the given span and base
 
         # Validate the rule number
         if rule_number < 0 or rule_number > self.n_rules - 1:
             raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {self.n_rules - 1}.")
 
         # Convert rule number to base representation
-        self.encoding = self._encode(self.rule_number, self.base, self.length)
+        self.encoding = self._encode(self.rule_number, self.base, self.n_input_states)
 
-        # Generate all configurations, of a given length, in order for a given base, using list comprehension
+        # Generate all configurations, of a given length, in R-L (following Wolfram) order for a given base
         self.input_states = [self._encode(i, self.base, length=self.input_span) for i in range(self.n_input_states)]
-        self.input_states.reverse()
+        self.input_states.reverse()  # REV - Could be done in plotting, where it is relevant?
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -68,36 +67,26 @@ class Rule:
         return {e: c for e, c in zip(Rule.ALPHABET[:self.base], color_list)}
 
     @staticmethod
-    def _encode(value, base=2, length=None):
+    def _encode(value: int, base: int, length: int) -> str:
         """
-        Converts a value to its representation in the given base.
+        Converts a value to its representation in the given base, padded to length.
         """
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
 
-        digits = []
-        while value:
-            digits.append(Rule.ALPHABET[value % base])
-            value //= base
+        digits = [Rule.ALPHABET[value // base ** i % base] for i in range(length)][::-1]
 
-        # Pad with zeros (or '0' equivalents for the base) to the desired length
-        while len(digits) < length:
-            digits.append(Rule.ALPHABET[0])
-
-        return ''.join(reversed(digits))
+        return '{:>{fill}{length}}'.format(''.join(digits), fill=Rule.ALPHABET[0], length=length)
 
     @staticmethod
-    def _decode(encoding, base=2):
+    def _decode(encoding: str, base: int) -> int:
         """
         Converts a value in a given base to a base 10 value.
         """
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
 
-        rule_number = 0
-        for digit in encoding:
-            rule_number = rule_number * base + Rule.ALPHABET.index(digit)
-        return rule_number
+        return sum([Rule.ALPHABET.index(digit) * (base ** i) for i, digit in enumerate(reversed(encoding))])
 
     @dataclass
     class DisplayParams:

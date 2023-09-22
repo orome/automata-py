@@ -64,8 +64,17 @@ class Rule:
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-    def get_color_dict(self, color_list):
-        return {e: c for e, c in zip(Rule.ALPHABET[:self.base], color_list)}
+    @staticmethod
+    def get_cell_colors(color_list: [str], base: int):
+        # if color_list is None:
+        #     _color_list = Rule.DisplayParams.get_default_cell_colors(base)
+        # else:
+        #     _color_list = color_list
+        # # Map the cell colors to the rule alphabet
+        cell_colors = {e: c for e, c in
+                       zip(Rule.ALPHABET[:base],
+                           color_list if color_list else Rule.DisplayParams.get_default_cell_colors(base))}
+        return cell_colors  # , cell_colors.values()
 
     @staticmethod
     def _encode(value: int, base: int, length: int) -> str:
@@ -89,7 +98,7 @@ class Rule:
 
         return sum([Rule.ALPHABET.index(digit) * (base ** i) for i, digit in enumerate(reversed(encoding))])
 
-    @dataclass
+    @dataclass(frozen=True)
     class DisplayParams:
         fig_width: float = 12
         gap: float = 0.2
@@ -104,14 +113,11 @@ class Rule:
 
     def _plot_display(self, ax, display_params):
 
-        if display_params.cell_colors is None:
-            display_params.cell_colors = Rule.DisplayParams.get_default_cell_colors(self.base)
-
-        cell_colors = self.get_color_dict(display_params.cell_colors)
+        cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.base)
 
         def draw_cell(x, y, d, cell_size=1):
             rect = Rectangle((x, y), cell_size, cell_size,
-                             edgecolor=display_params.grid_color, facecolor=cell_colors[d],
+                             edgecolor=display_params.grid_color, facecolor=cell_color_mapping[d],
                              linewidth=display_params.grid_width)
             ax.add_patch(rect)
 
@@ -301,6 +307,7 @@ class CellularAutomata:
             else:
                 slice_spec.steps = self.frame_steps - slice_spec.start_step
 
+    # TBD - This should be frozen and validating the bounds of the slice should be handled differently
     @dataclass
     class DisplayParams:
         fig_width: float = 12
@@ -319,11 +326,7 @@ class CellularAutomata:
         optionally showing a grid around the cells.
         """
 
-        if display_params.cell_colors is None:
-            display_params.cell_colors = Rule.DisplayParams.get_default_cell_colors(self.rule.base)
-
-        # CHANGE: Obtain the colors dictionary directly from the rule object.
-        colors_dict = self.rule.get_color_dict(display_params.cell_colors)
+        cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.rule.base)
 
         for highlight in display_params.highlights:
             self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
@@ -344,7 +347,7 @@ class CellularAutomata:
 
         # REV - See if there's a better way to do this
         # Convert the encoded lattice data to color using the color's dictionary.
-        color_strings = np.vectorize(colors_dict.get)(self._lattice[display_params.slice_steps.range()])
+        color_strings = np.vectorize(cell_color_mapping.get)(self._lattice[display_params.slice_steps.range()])
         # Convert the entire color_strings array to an array of RGBA values
         rgba_values = matplotlib.colors.to_rgba_array(color_strings.ravel())
         # Reshape the rgba_values to match the shape of the color_strings array with an additional dimension for RGBA

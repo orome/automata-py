@@ -46,20 +46,21 @@ class Rule:
         self.base = base
         self.rule_number = rule_number
 
-        self.input_span = 2 * self.input_range + 1      # Number of cells in the input neighborhood
-        self.n_input_states = base ** self.input_span   # Number of possible input states
-        self.n_rules = base ** self.n_input_states      # Number of possible rules for the given span and base
+        self.input_span = 2 * self.input_range + 1        # Number of cells in the input neighborhood
+        self.n_input_patterns = base ** self.input_span   # Number of input states for a rule
+        self.n_rules = base ** self.n_input_patterns      # Number of possible rules for the given span and base
 
         # Validate the rule number
         if rule_number < 0 or rule_number > self.n_rules - 1:
             raise CellularAutomataError(f"Invalid rule number. Must be between 0 and {self.n_rules - 1}.")
 
-        # Convert rule number to base representation; also the rule output pattern
-        self.encoding = self._encode(self.rule_number, self.base, self.n_input_states)
+        # Convert rule number to base representation; also the rule output pattern, in R-L order
+        self.encoding = self._encode(self.rule_number, self.base, self.n_input_patterns)
 
-        # Generate all configurations, of a given length, in R-L (following Wolfram) order for a given base
-        self.input_states = [self._encode(i, self.base, length=self.input_span) for i in range(self.n_input_states)]
-        self.input_states.reverse()  # Ordered to match rule number, which corresponds to output order
+        # Generate all configurations, of a given length
+        input_patterns = [self._encode(i, self.base, length=self.input_span) for i in range(len(self.encoding))]
+        input_patterns.reverse()  # Ordered to match rule number, which corresponds to output order by definition
+        self.pattern_to_output = dict(zip(input_patterns, self.encoding))
 
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -106,16 +107,15 @@ class Rule:
         if display_params.cell_colors is None:
             display_params.cell_colors = Rule.DisplayParams.get_default_cell_colors(self.base)
 
-        colors = self.get_color_dict(display_params.cell_colors)
+        cell_colors = self.get_color_dict(display_params.cell_colors)
 
-        def draw_custom_cell(x, y, d, cell_size=1):
-            cell_color = colors[d]
+        def draw_cell(x, y, d, cell_size=1):
             rect = Rectangle((x, y), cell_size, cell_size,
-                             edgecolor=display_params.grid_color, facecolor=cell_color,
+                             edgecolor=display_params.grid_color, facecolor=cell_colors[d],
                              linewidth=display_params.grid_width)
             ax.add_patch(rect)
 
-        ax.set_xlim(-0.25, 4*self.n_input_states-0.75)
+        ax.set_xlim(-0.25, 4 * self.n_input_patterns - 0.75)
         ax.set_ylim(0, 2.5)
         ax.set_aspect('equal')
         ax.axis('off')
@@ -126,15 +126,13 @@ class Rule:
         y_top = 2 - display_params.gap - display_params.vertical_shift
         y_bottom = 1 - 2 * display_params.gap - display_params.vertical_shift
 
-        # REV - Would this be clearer using a pattern_to_output approach as in the automata class's compute?
-        # Iterate over each configuration and draw it followed by its output
-        for i, config in enumerate(self.input_states):
-            # Draw the 3-bit configuration
-            for position, digit in enumerate(config):
-                draw_custom_cell(position + i * 4, y_top, digit)
-            # Draw the output below the configuration, with a gap
-            output = self.encoding[i]
-            draw_custom_cell(i * 4 + 1, y_bottom, output)
+        # Iterate over each input configuration and draw it followed by its output
+        for pattern_idx, input_pattern in enumerate(self.pattern_to_output.keys()):
+            # Draw the input digits
+            for input_digit_pos, input_digit in enumerate(input_pattern):
+                draw_cell(input_digit_pos + pattern_idx * 4, y_top, input_digit)
+            # Draw the output digit below the input, with a gap
+            draw_cell(pattern_idx * 4 + 1, y_bottom, self.pattern_to_output[input_pattern])
 
         # plt.tight_layout()
         return height_ratio
@@ -234,9 +232,8 @@ class CellularAutomata:
             patterns = [left + center + right for left, center, right in
                         zip(left_neighbors, center_neighbors, right_neighbors)]
 
-            pattern_to_output = dict(zip(self.rule.input_states, self.rule.encoding))
             # Use the patterns to directly get the output values from the rule's pattern_to_output dictionary
-            self._lattice[row] = [pattern_to_output[pattern] for pattern in patterns]
+            self._lattice[row] = [self.rule.pattern_to_output[pattern] for pattern in patterns]
 
     def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
         """

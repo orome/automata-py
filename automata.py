@@ -4,13 +4,12 @@ Currently limited to simple elementary (1D, multi-state, immediate neighbor) aut
 using various boundary conditions.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-# from matplotlib.colors import ListedColormap
-from matplotlib.patches import Rectangle
-import matplotlib
-import matplotlib.gridspec as gridspec
 from dataclasses import dataclass
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+import matplotlib.gridspec as gridspec
 
 
 class CellularAutomataError(ValueError):
@@ -19,7 +18,6 @@ class CellularAutomataError(ValueError):
         super().__init__(", ".join(args) + ".")
 
 
-# A simple class for specifying highlighting bounds
 @dataclass
 class HighlightBounds:
     start_step: int = None
@@ -28,7 +26,7 @@ class HighlightBounds:
     width: int = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class SliceSpec:
     start_step: int = None
     steps: int = None
@@ -66,11 +64,6 @@ class Rule:
 
     @staticmethod
     def get_cell_colors(color_list: [str], base: int):
-        # if color_list is None:
-        #     _color_list = Rule.DisplayParams.get_default_cell_colors(base)
-        # else:
-        #     _color_list = color_list
-        # # Map the cell colors to the rule alphabet
         cell_colors = {e: c for e, c in
                        zip(Rule.ALPHABET[:base],
                            color_list if color_list else Rule.DisplayParams.get_default_cell_colors(base))}
@@ -203,10 +196,7 @@ class CellularAutomata:
 
     # Return the lattice, optionally with a slice specified using a SliceSpec object
     def lattice(self, slice_steps: SliceSpec = None):
-        if slice_steps is None:
-            slice_steps = SliceSpec(0, self.frame_steps)
-        else:
-            self._validate_slice_bounds(slice_steps, check_bounds=True)
+        slice_steps = self._validate_slice_bounds(slice_steps, check_bounds=True)
         return self._lattice[slice_steps.range()]
 
     def _get_boundary_values(self, current_row):
@@ -287,25 +277,42 @@ class CellularAutomata:
 
     def _validate_slice_bounds(self, slice_spec: SliceSpec, check_bounds: bool):
         """
-        Checks bounds for slice and returns error messages for any explicitly provided invalid bounds.
-        Implement default behavior for missing or unchecked invalid specs.
+        Check bounds for slice and error messages for any invalid bounds.
+        Return a SliceSpec that is valid for the lattice.
         """
-        if slice_spec.start_step is None or slice_spec.start_step < 0:
-            if check_bounds:
-                raise CellularAutomataError(f"Invalid slice start step {slice_spec.start_step}. Must be >= 0.")
-            else:
-                slice_spec.start_step = 0
-        elif slice_spec.steps is None or slice_spec.steps < 1:
-            if check_bounds:
-                raise CellularAutomataError(f"Invalid slice steps {slice_spec.steps}. Must be >= 1.")
-            else:
-                slice_spec.steps = 1
-        elif slice_spec.steps > self.frame_steps - slice_spec.start_step:
-            if check_bounds:
-                raise CellularAutomataError(
-                    f"Invalid slice steps {slice_spec.steps}. Must be <= {self.frame_steps - slice_spec.start_step}.")
-            else:
-                slice_spec.steps = self.frame_steps - slice_spec.start_step
+        if slice_spec is None:
+            return SliceSpec(0, self.frame_steps)
+
+        if check_bounds:
+            if slice_spec.start_step is not None:
+                if slice_spec.start_step < 0:   # slice_spec.start_step is None or
+                    raise CellularAutomataError(f"Invalid slice start step {slice_spec.start_step}. Must be >= 0.")
+                elif slice_spec.start_step >= self.frame_steps:
+                    raise CellularAutomataError(
+                        f"Invalid slice start step {slice_spec.start_step}. Must be < {self.frame_steps}.")
+            if slice_spec.steps is not None:
+                if slice_spec.steps < 1:  # slice_spec.steps is None or
+                    raise CellularAutomataError(f"Invalid slice steps {slice_spec.steps}. Must be >= 1.")
+                else:
+                    fixed_start_step = slice_spec.start_step if slice_spec.start_step is not None else 0
+                    if slice_spec.steps > self.frame_steps - fixed_start_step:
+                        raise CellularAutomataError(
+                            f"Invalid slice steps {slice_spec.steps}. "
+                            f"Must be <= {self.frame_steps - fixed_start_step}.")
+
+        validated_start_step = slice_spec.start_step
+        validated_steps = slice_spec.steps
+
+        if validated_start_step is None or validated_start_step < 0:
+            validated_start_step = 0
+        elif slice_spec.start_step >= self.frame_steps:
+            validated_start_step = self.frame_steps - 1
+        if validated_steps is None or validated_steps < 1:
+            validated_steps = 1
+        elif validated_steps > self.frame_steps - validated_start_step:
+            validated_steps = self.frame_steps - validated_start_step
+
+        return SliceSpec(validated_start_step, validated_steps)
 
     # TBD - This should be frozen and validating the bounds of the slice should be handled differently
     @dataclass
@@ -331,19 +338,14 @@ class CellularAutomata:
         for highlight in display_params.highlights:
             self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
 
+        display_params.slice_steps = self._validate_slice_bounds(display_params.slice_steps, check_bounds=False)
+
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
         mask = np.ones(self._lattice.shape, dtype=float) * display_params.highlight_mask
         for highlight in display_params.highlights:
             mask[highlight.start_step:highlight.start_step + highlight.steps,
                  max(0, (self.frame_width - highlight.width) // 2 + highlight.offset):
                  min(self.frame_width, (self.frame_width + highlight.width) // 2 + highlight.offset)] = 1
-
-        # Set the slice to the entire frame if not specified
-        if display_params.slice_steps is None:
-            display_params.slice_steps = SliceSpec(0, self.frame_steps)
-        else:
-            # Otherwise set unspecified or overflowing slice bounds to default values
-            self._validate_slice_bounds(display_params.slice_steps, check_bounds=False)
 
         # REV - See if there's a better way to do this
         # Convert the encoded lattice data to color using the color's dictionary.

@@ -153,9 +153,24 @@ class Rule:
 
 
 class CellularAutomata:
-    def __init__(self, rule_number, initial_conditions, base=2,
+
+    _instances = {}
+
+    # Overriding the __new__ method for memoization
+    def __new__(cls, *args, **kwargs):
+        key = (args, frozenset(kwargs.items()))
+        if key not in cls._instances:
+            instance = super().__new__(cls)
+            cls._instances[key] = instance
+        return cls._instances[key]
+
+    def __init__(self, rule_number: int, initial_conditions: str, base=2,
                  frame_width=101, frame_steps=200,
                  boundary_condition="zero"):
+
+        instance_key = (rule_number, initial_conditions, base, frame_width, frame_steps, boundary_condition)
+        if getattr(self, '_key', None) == instance_key:
+            return
 
         # Validate boundary condition
         valid_boundary_conditions = ["zero", "periodic", "one"]
@@ -193,6 +208,8 @@ class CellularAutomata:
 
         # Compute the automaton
         self._compute_automaton()
+
+        self._key = instance_key
 
     # Return the lattice, optionally with a slice specified using a SliceSpec object
     def lattice(self, slice_steps: SliceSpec = None):

@@ -168,8 +168,8 @@ class CellularAutomata:
                  frame_width=101, frame_steps=200,
                  boundary_condition="zero"):
 
-        instance_key = (rule_number, initial_conditions, base, frame_width, frame_steps, boundary_condition)
-        if getattr(self, '_key', None) == instance_key:
+        # Avoid re-initializing an instance retrieved from memoization
+        if getattr(self, '_initialized', False):
             return
 
         # Validate boundary condition
@@ -190,7 +190,7 @@ class CellularAutomata:
         self._lattice = np.empty((self.frame_steps, self.frame_width), dtype='<U1')
         self._lattice.fill(Rule.ALPHABET[0])
 
-        # CHANGE: Process initial_conditions as a string and center on the 0th step
+        # Process initial_conditions as a string and center on the 0th step
         # If the string length is even, pad it with a '0' at the left end
         if len(initial_conditions) % 2 == 0:
             initial_conditions = Rule.ALPHABET[0] + initial_conditions
@@ -209,7 +209,7 @@ class CellularAutomata:
         # Compute the automaton
         self._compute_automaton()
 
-        self._key = instance_key
+        self._initialized = True
 
     # Return the lattice, optionally with a slice specified using a SliceSpec object
     def lattice(self, slice_steps: SliceSpec = None):
@@ -446,3 +446,25 @@ class CellularAutomata:
                 show_rule: bool = False):
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
+
+
+# class MyClass:
+#
+#     _instances = {}
+#
+#     def __new__(cls, *args, **kwargs):
+#         key = (args, frozenset(kwargs.items()))
+#         if key not in cls._instances:
+#             instance = super().__new__(cls)
+#             cls._instances[key] = instance
+#         return cls._instances[key]
+#
+#     def __init__(self, arg1: int, arg2: str, opt1=2,  opt2=101, opt3=200):
+#
+#         instance_key = (arg1, arg2, opt1,  opt2, opt3)
+#         if getattr(self, '_key', None) == instance_key:
+#             return
+#
+#         # Time consuming initialization of immutable instance ...
+#
+#         self._key = instance_key

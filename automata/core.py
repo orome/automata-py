@@ -6,7 +6,7 @@ using various boundary conditions.
 
 from dataclasses import dataclass
 import numpy as np
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import matplotlib.gridspec as gridspec
@@ -368,7 +368,7 @@ class CellularAutomata:
         # Convert the encoded lattice data to color using the color's dictionary.
         color_strings = np.vectorize(cell_color_mapping.get)(self._lattice[display_params.slice_steps.range()])
         # Convert the entire color_strings array to an array of RGBA values
-        rgba_values = matplotlib.colors.to_rgba_array(color_strings.ravel())
+        rgba_values = mpl.colors.to_rgba_array(color_strings.ravel())
         # Reshape the rgba_values to match the shape of the color_strings array with an additional dimension for RGBA
         rgb_lattice = rgba_values.reshape(*color_strings.shape, 4)
         # Mask the highlighted region
@@ -431,12 +431,12 @@ class CellularAutomata:
                                    height_ratios=[h_rule, h_lattice], hspace=0.0005*display_params.fig_width)
 
             # Rule plot
-            rule_ax = plt.subplot(gs[0])
+            rule_ax = fig.add_subplot(gs[0])
             # noinspection PyProtectedMember
             self.rule._plot_display(rule_ax, rule_display_params)
 
             # Lattice plot
-            lattice_ax = plt.subplot(gs[1])
+            lattice_ax = fig.add_subplot(gs[1])
             self._plot_display(lattice_ax, display_params)
 
             return fig, (rule_ax, lattice_ax)
@@ -446,25 +446,3 @@ class CellularAutomata:
                 show_rule: bool = False):
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
-
-
-# class MyClass:
-#
-#     _instances = {}
-#
-#     def __new__(cls, *args, **kwargs):
-#         key = (args, frozenset(kwargs.items()))
-#         if key not in cls._instances:
-#             instance = super().__new__(cls)
-#             cls._instances[key] = instance
-#         return cls._instances[key]
-#
-#     def __init__(self, arg1: int, arg2: str, opt1=2,  opt2=101, opt3=200):
-#
-#         instance_key = (arg1, arg2, opt1,  opt2, opt3)
-#         if getattr(self, '_key', None) == instance_key:
-#             return
-#
-#         # Time consuming initialization of immutable instance ...
-#
-#         self._key = instance_key

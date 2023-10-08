@@ -5,6 +5,8 @@ using various boundary conditions.
 """
 
 from dataclasses import dataclass
+
+import matplotlib.axes
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -104,7 +106,7 @@ class Rule:
         def get_default_cell_colors(base):
             return [str(c) for c in np.linspace(1, 0, base)]
 
-    def _plot_display(self, ax, display_params):
+    def _plot_display(self, ax: matplotlib.axes.Axes, display_params: DisplayParams) -> float:
 
         cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.base)
 
@@ -343,7 +345,7 @@ class CellularAutomata:
         cell_colors: [str] = None
         check_highlight_bounds: bool = True
 
-    def _plot_display(self, ax, display_params):
+    def _plot_display(self, ax: matplotlib.axes.Axes, display_params: DisplayParams) -> None:
         """
         Displays the cellular automaton lattice
         optionally highlighting a frame within it and

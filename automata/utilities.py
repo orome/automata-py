@@ -77,22 +77,22 @@ def get_controls(control_names, eg_frame_steps=25, eg_frame_width=201):
     return selected_controls
 
 
-def display_automaton(rule_slider, base_slider,
-                      use_highlight_checkbox=True, h_start=0, h_width=21, h_offset=0, h_steps=20,
-                      grid_color='white',
-                      cell_color_0='black', cell_color_1='yellow', cell_color_2='red', cell_color_3='green',
+def display_automaton(rule_slider=90, base_slider=2,
+                      highlight_checkbox=True, h_start_slider=0, h_width_slider=21, h_offset_slider=0, h_steps_slider=20,
+                      grid_color_picker='white',
+                      cell_color_picker_0='black', cell_color_picker_1='yellow', cell_color_picker_2='red', cell_color_picker_3='green',
                       eg_frame_steps=80, eg_frame_width=151):
-    if not use_highlight_checkbox:
+    if not highlight_checkbox:
         highlights = [HighlightBounds()]
     else:
-        highlights = [HighlightBounds(steps=h_steps, start_step=h_start, offset=h_offset, width=h_width)]
+        highlights = [HighlightBounds(steps=h_steps_slider, start_step=h_start_slider, offset=h_offset_slider, width=h_width_slider)]
 
     CellularAutomata(rule_slider, '1', base=base_slider,
                      frame_steps=eg_frame_steps, frame_width=eg_frame_width).display(
         CellularAutomata.DisplayParams(
             fig_width=12,
-            grid_color=grid_color, grid_width=0.2,
-            cell_colors=[cell_color_0, cell_color_1, cell_color_2, cell_color_3],
+            grid_color=grid_color_picker, grid_width=0.2,
+            cell_colors=[cell_color_picker_0, cell_color_picker_1, cell_color_picker_2, cell_color_picker_3],
             highlights=highlights,
             check_highlight_bounds=False),
         rule_display_params=None,
@@ -110,12 +110,5 @@ def interactive_display_automaton(frame_steps=80, frame_width=151):
         eg_frame_steps=frame_steps, eg_frame_width=frame_width)
 
     @interact(**controls)
-    def interactive_display(rule_slider, base_slider,
-                            highlight_checkbox, h_start_slider, h_width_slider, h_offset_slider, h_steps_slider,
-                            grid_color_picker,
-                            cell_color_picker_0, cell_color_picker_1, cell_color_picker_2, cell_color_picker_3):
-        display_automaton(rule_slider, base_slider,
-                          highlight_checkbox, h_start_slider, h_width_slider, h_offset_slider, h_steps_slider,
-                          grid_color_picker,
-                          cell_color_picker_0, cell_color_picker_1, cell_color_picker_2, cell_color_picker_3,
-                          frame_steps, frame_width)
+    def interactive_display(**kwargs):
+        display_automaton(**kwargs, eg_frame_steps=frame_steps, eg_frame_width=frame_width)

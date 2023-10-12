@@ -100,7 +100,7 @@ class Rule:
         vertical_shift: float = 0.5
         cell_colors: [str] = None
         grid_color: str = 'black'
-        grid_width: float = 0.5
+        grid_thickness: float = 0.5
 
         @staticmethod
         def get_default_cell_colors(base):
@@ -113,7 +113,7 @@ class Rule:
         def draw_cell(x, y, d, cell_size=1):
             rect = Rectangle((x, y), cell_size, cell_size,
                              edgecolor=display_params.grid_color, facecolor=cell_color_mapping[d],
-                             linewidth=display_params.grid_width)
+                             linewidth=display_params.grid_thickness)
             ax.add_patch(rect)
 
         ax.set_xlim(-0.25, 4 * self.n_input_patterns - 0.75)
@@ -341,7 +341,7 @@ class CellularAutomata:
         slice_steps: SliceSpec = None
         highlight_mask: float = 0.3
         grid_color: str = None
-        grid_width: float = 0.5
+        grid_thickness: float = 0.5
         cell_colors: [str] = None
         check_highlight_bounds: bool = True
 
@@ -380,7 +380,7 @@ class CellularAutomata:
 
         # Add grid with lines around each cell if grid_color is specified
         if display_params.grid_color:
-            ax.grid(which='minor', color=display_params.grid_color, linewidth=display_params.grid_width)
+            ax.grid(which='minor', color=display_params.grid_color, linewidth=display_params.grid_thickness)
             ax.set_xticks(np.arange(-.5, self.frame_width, 1), minor=True)
             # Note: not using frame_steps here
             ax.set_yticks(np.arange(-.5, display_params.slice_steps.steps, 1), minor=True)
@@ -393,7 +393,7 @@ class CellularAutomata:
         else:
             ax.axis('off')
 
-        plt.setp(ax.spines.values(), color=display_params.grid_color, linewidth=display_params.grid_width)
+        plt.setp(ax.spines.values(), color=display_params.grid_color, linewidth=display_params.grid_thickness)
 
     def get_display(self, display_params: DisplayParams = None,
                     rule_display_params: Rule.DisplayParams = None,

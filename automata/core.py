@@ -101,6 +101,7 @@ class Rule:
         cell_colors: [str] = None
         grid_color: str = 'black'
         grid_thickness: float = 0.5
+        rows: int = 1
 
         @staticmethod
         def get_default_cell_colors(base):
@@ -110,30 +111,50 @@ class Rule:
 
         cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.base)
 
-        def draw_cell(x, y, d, cell_size=1):
+        cell_size = 1
+
+        def draw_cell(x, y, d):
             rect = Rectangle((x, y), cell_size, cell_size,
                              edgecolor=display_params.grid_color, facecolor=cell_color_mapping[d],
                              linewidth=display_params.grid_thickness)
             ax.add_patch(rect)
 
         ax.set_xlim(-0.25, 4 * self.n_input_patterns - 0.75)
-        ax.set_ylim(0, 2.5)
+        ax.set_ylim(0, 2.5 * display_params.rows)
         ax.set_aspect('equal')
         ax.axis('off')
         # REV - Cleaner way to get aspect ratio?
         height_ratio = ((ax.get_xlim()[1] - ax.get_xlim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0]))
 
         # Adjust the vertical position using the vertical_shift
-        y_top = 2 - display_params.gap - display_params.vertical_shift
-        y_bottom = 1 - 2 * display_params.gap - display_params.vertical_shift
+        # y_top = 2 - display_params.gap - display_params.vertical_shift
+        # y_bottom = 1 - 2 * display_params.gap - display_params.vertical_shift
 
-        # Iterate over each input configuration and draw it followed by its output
+        patterns_per_row = -(-len(self.pattern_to_output) // display_params.rows)
+        # Calculate the total width occupied by patterns in a row
+        if display_params.rows == 1:
+            total_pattern_width = len(self.pattern_to_output) * 4
+        else:
+            total_pattern_width = patterns_per_row * 4
+
+        # Calculate an offset to center the patterns in the figure
+        center_offset = (4 * self.n_input_patterns - total_pattern_width) / 2
+
         for pattern_idx, input_pattern in enumerate(self.pattern_to_output.keys()):
+            row_idx = pattern_idx // patterns_per_row
+
+            # Adjust y position based on row index
+            y_top_adj = 2.5 * (display_params.rows - row_idx - 1) + 1.5
+            y_bottom_adj = 2.5 * (display_params.rows - row_idx - 1) + 0.5
+
+            # Adjust x position based on the center_offset
+            x_shift = (pattern_idx % patterns_per_row) * 4 + center_offset
+
             # Draw the input digits
             for input_digit_pos, input_digit in enumerate(input_pattern):
-                draw_cell(input_digit_pos + pattern_idx * 4, y_top, input_digit)
+                draw_cell(input_digit_pos + x_shift, y_top_adj, input_digit)
             # Draw the output digit below the input, with a gap
-            draw_cell(pattern_idx * 4 + 1, y_bottom, self.pattern_to_output[input_pattern])
+            draw_cell(x_shift + 1, y_bottom_adj, self.pattern_to_output[input_pattern])
 
         # plt.tight_layout()
         return height_ratio
@@ -144,7 +165,8 @@ class Rule:
             display_params = Rule.DisplayParams()
 
         fig, ax = plt.subplots(figsize=(display_params.fig_width,
-                                        display_params.fig_width * 2.5 / (2 * (self.base ** self.input_span))))
+                                        display_params.fig_width * 2.5 * display_params.rows /
+                                        (2 * (self.base ** self.input_span))))
         height_ratio = self._plot_display(ax, display_params)
         plt.tight_layout()
         return fig, ax, height_ratio

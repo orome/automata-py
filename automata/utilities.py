@@ -4,10 +4,12 @@ from .core import Rule, HighlightBounds, CellularAutomata
 
 # USE - For use in Jupyter notebooks; assumes ipywidgets is installed in the Python environment
 
+# TBD - Should be vetter coordinated with number of colors and color controls
+DISPLAY_BASE_MAX = 4
 
 def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     rule_slider = IntSlider(min=0, max=Rule(0, base=2).n_rules - 1, step=1, value=90, description='Rule')
-    base_slider = IntSlider(min=2, max=3, step=1, value=2, description='Base')
+    base_slider = IntSlider(min=2, max=DISPLAY_BASE_MAX, step=1, value=2, description='Base')
 
     # Adjust the max r to correspond to the base
     def update_r_max(*args):
@@ -21,6 +23,14 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     h_offset_slider = IntSlider(min=-frame_width // 2, max=frame_width // 2, step=1, value=0,
                                 description='Offset')
     h_steps_slider = IntSlider(min=1, max=frame_steps, step=1, value=20, description='Steps')
+
+    rule_rows_slider = IntSlider(min=1, max=6, step=1, value=Rule(0, base=2).best_rows(),
+                                 description='Rule rows')
+    def update_rule_rows_default(*args):
+        rule_rows_slider.value = Rule(0, base=base_slider.value).best_rows()
+
+    base_slider.observe(update_rule_rows_default, names='value')
+    update_rule_rows_default()
 
     # Enable/disable h_start and h_width based on the checkbox
     def update_highlight_controls(change=None):
@@ -71,7 +81,8 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
         'cell_color_0': cell_color_pickers[0],
         'cell_color_1': cell_color_pickers[1],
         'cell_color_2': cell_color_pickers[2],
-        'cell_color_3': cell_color_pickers[3]
+        'cell_color_3': cell_color_pickers[3],  # REV - Can't be greater than DISPLAY_BASE_MAX-1
+        'rule_rows': rule_rows_slider
     }
 
     if display_parameters is None:
@@ -87,21 +98,24 @@ def display_automaton(rule=90, base=2,
                       use_highlight=False, h_start=0, h_width=21, h_offset=0, h_steps=20,
                       grid_color='white', grid_thickness=0.2,
                       cell_color_0='black', cell_color_1='yellow', cell_color_2='red', cell_color_3='green',
+                      rule_rows=1,
                       frame_steps=80, frame_width=151, fig_width=12):
     if not use_highlight:
         highlights = [HighlightBounds()]
     else:
         highlights = [HighlightBounds(steps=h_steps, start_step=h_start, offset=h_offset, width=h_width)]
 
+    colors = [cell_color_0, cell_color_1, cell_color_2, cell_color_3]
+
     CellularAutomata(rule, '1', base=base,
                      frame_steps=frame_steps, frame_width=frame_width).display(
         CellularAutomata.DisplayParams(
             fig_width=fig_width,
             grid_color=grid_color, grid_thickness=grid_thickness,
-            cell_colors=[cell_color_0, cell_color_1, cell_color_2, cell_color_3],
+            cell_colors=colors,
             highlights=highlights,
             check_highlight_bounds=False),
-        rule_display_params=None,
+        rule_display_params=Rule.DisplayParams(cell_colors=colors, rows=rule_rows),
         show_rule=True
     )
     return

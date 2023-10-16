@@ -107,11 +107,16 @@ class Rule:
         def get_default_cell_colors(base):
             return [str(c) for c in np.linspace(1, 0, base)]
 
+    def best_rows(self, max_per_row=14):
+        total = self.n_input_patterns
+        return next(filter(lambda d: total % d == 0 and total // d <= max_per_row, range(1, total + 1)), total)
+
     def _plot_display(self, ax: matplotlib.axes.Axes, display_params: DisplayParams) -> float:
 
         cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.base)
 
         cell_size = 1
+        patterns_per_row = -(-len(self.pattern_to_output) // display_params.rows)
 
         def draw_cell(x, y, d):
             rect = Rectangle((x, y), cell_size, cell_size,
@@ -119,26 +124,12 @@ class Rule:
                              linewidth=display_params.grid_thickness)
             ax.add_patch(rect)
 
-        ax.set_xlim(-0.25, 4 * self.n_input_patterns - 0.75)
+        ax.set_xlim(-0.25, 4 * patterns_per_row - 0.75)
         ax.set_ylim(0, 2.5 * display_params.rows)
         ax.set_aspect('equal')
         ax.axis('off')
         # REV - Cleaner way to get aspect ratio?
         height_ratio = ((ax.get_xlim()[1] - ax.get_xlim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0]))
-
-        # Adjust the vertical position using the vertical_shift
-        # y_top = 2 - display_params.gap - display_params.vertical_shift
-        # y_bottom = 1 - 2 * display_params.gap - display_params.vertical_shift
-
-        patterns_per_row = -(-len(self.pattern_to_output) // display_params.rows)
-        # Calculate the total width occupied by patterns in a row
-        if display_params.rows == 1:
-            total_pattern_width = len(self.pattern_to_output) * 4
-        else:
-            total_pattern_width = patterns_per_row * 4
-
-        # Calculate an offset to center the patterns in the figure
-        center_offset = (4 * self.n_input_patterns - total_pattern_width) / 2
 
         for pattern_idx, input_pattern in enumerate(self.pattern_to_output.keys()):
             row_idx = pattern_idx // patterns_per_row
@@ -148,7 +139,7 @@ class Rule:
             y_bottom_adj = 2.5 * (display_params.rows - row_idx - 1) + 0.5
 
             # Adjust x position based on the center_offset
-            x_shift = (pattern_idx % patterns_per_row) * 4 + center_offset
+            x_shift = (pattern_idx % patterns_per_row) * 4
 
             # Draw the input digits
             for input_digit_pos, input_digit in enumerate(input_pattern):

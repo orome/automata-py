@@ -4,8 +4,9 @@ from .core import Rule, HighlightBounds, CellularAutomata
 
 # USE - For use in Jupyter notebooks; assumes ipywidgets is installed in the Python environment
 
-# TBD - Should be vetter coordinated with number of colors and color controls
+# TBD - Should be better coordinated with number of colors and color controls
 DISPLAY_BASE_MAX = 4
+
 
 def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     rule_slider = IntSlider(min=0, max=Rule(0, base=2).n_rules - 1, step=1, value=90, description='Rule')
@@ -26,6 +27,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
 
     rule_rows_slider = IntSlider(min=1, max=6, step=1, value=Rule(0, base=2).best_rows(),
                                  description='Rule rows')
+
     def update_rule_rows_default(*args):
         rule_rows_slider.value = Rule(0, base=base_slider.value).best_rows()
 

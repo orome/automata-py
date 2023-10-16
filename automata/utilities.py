@@ -25,7 +25,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
                                 description='Offset')
     h_steps_slider = IntSlider(min=1, max=frame_steps, step=1, value=20, description='Steps')
 
-    rule_rows_slider = IntSlider(min=1, max=6, step=1, value=Rule(0, base=2).best_rows(),
+    rule_rows_slider = IntSlider(min=0, max=6, step=1, value=Rule(0, base=2).best_rows(),
                                  description='Rule rows')
 
     def update_rule_rows_default(*args):
@@ -117,8 +117,8 @@ def display_automaton(rule=90, base=2,
             cell_colors=colors,
             highlights=highlights,
             check_highlight_bounds=False),
-        rule_display_params=Rule.DisplayParams(cell_colors=colors, rows=rule_rows),
-        show_rule=True
+        rule_display_params=Rule.DisplayParams(cell_colors=colors, rows=rule_rows) if rule_rows > 0 else None,
+        show_rule=rule_rows > 0
     )
     return
 

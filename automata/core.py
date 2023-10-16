@@ -418,13 +418,7 @@ class CellularAutomata:
         if rule_display_params is not None:
             show_rule = True
 
-        if not show_rule:
-            fig, lattice_ax = plt.subplots(figsize=(display_params.fig_width,
-                                                    display_params.fig_width * self.frame_steps / self.frame_width))
-            self._plot_display(lattice_ax, display_params)
-            plt.tight_layout()
-            return fig, lattice_ax
-        else:
+        if show_rule:
             if rule_display_params is None:
                 rule_display_params = Rule.DisplayParams(cell_colors=display_params.cell_colors)
 
@@ -432,29 +426,33 @@ class CellularAutomata:
             # REV - This seems pretty stupid, there has to be a better way than calling self.rule._plot_display twice
             dummy_fig, dummy_ax, rule_height_ratio = self.rule.get_display(rule_display_params)
             plt.close(dummy_fig)
-
-            # Calculate heights
             h_rule = display_params.fig_width / rule_height_ratio
-            h_lattice = display_params.fig_width * self.frame_steps / self.frame_width
+        else:
+            h_rule = 0
 
-            # Create main figure with adjusted height
-            total_height = h_rule + h_lattice + 0.05 * display_params.fig_width  # Adding small gap
-            fig = plt.figure(figsize=(display_params.fig_width, total_height))
+        h_lattice = display_params.fig_width * self.frame_steps / self.frame_width
 
-            # GridSpec layout
-            gs = gridspec.GridSpec(2, 1,
-                                   height_ratios=[h_rule, h_lattice], hspace=0.0005*display_params.fig_width)
+        # Create main figure with adjusted height
+        total_height = h_rule + h_lattice + 0.05 * display_params.fig_width  # Adding small gap
+        fig = plt.figure(figsize=(display_params.fig_width, total_height))
 
+        # GridSpec layout
+        gs = gridspec.GridSpec(2, 1,
+                               height_ratios=[h_rule, h_lattice], hspace=0.0005*display_params.fig_width)
+
+        if show_rule:
             # Rule plot
             rule_ax = fig.add_subplot(gs[0])
             # noinspection PyProtectedMember
             self.rule._plot_display(rule_ax, rule_display_params)
+        else:
+            rule_ax = None
 
-            # Lattice plot
-            lattice_ax = fig.add_subplot(gs[1])
-            self._plot_display(lattice_ax, display_params)
+        # Lattice plot
+        lattice_ax = fig.add_subplot(gs[1])
+        self._plot_display(lattice_ax, display_params)
 
-            return fig, (rule_ax, lattice_ax)
+        return fig, (rule_ax, lattice_ax)
 
     def display(self, display_params: DisplayParams = None,
                 rule_display_params: Rule.DisplayParams = None,

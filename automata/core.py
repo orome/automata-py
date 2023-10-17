@@ -4,7 +4,7 @@ Currently limited to simple elementary (1D, multi-state, immediate neighbor) aut
 using various boundary conditions.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import matplotlib.axes
 import numpy as np
@@ -437,26 +437,50 @@ class CellularAutomata:
         plt.show()
 
 
+# @dataclass(frozen=True)
+# class _PlotParams:
+#     total_patterns: int
+#     rows: int
+#     left_buffer: float = 0.25
+#     right_buffer: float = 0.75
+#     x_min: float = field(init=False)
+#     x_max: float = field(init=False)
+#     y_min: float = field(init=False)
+#     y_max: float = field(init=False)
+#     patterns_per_row: int = field(init=False)
+#     height_ratio: float = field(init=False)
+#
+#     def __post_init__(self):
+#         patterns_per_row = -(-self.total_patterns // self.rows)
+#         height_ratio = (4 * patterns_per_row - self.right_buffer + self.left_buffer) / (2.5 * self.rows)
+#         x_min = -self.left_buffer
+#         x_max = 4 * patterns_per_row - self.right_buffer
+#         y_min = 0
+#         y_max = 2.5 * self.rows
+#         object.__setattr__(self, 'patterns_per_row', patterns_per_row)
+#         object.__setattr__(self, 'height_ratio', height_ratio)
+#         object.__setattr__(self, 'x_min', x_min)
+#         object.__setattr__(self, 'x_max', x_max)
+#         object.__setattr__(self, 'y_min', y_min)
+#         object.__setattr__(self, 'y_max', y_max)
+
 @dataclass(frozen=True)
 class _PlotParams:
-    total_patterns: int
-    rows: int
-    left_buffer: float = 0.25
-    right_buffer: float = 0.75
-    x_min: float = field(init=False)
-    x_max: float = field(init=False)
-    y_min: float = field(init=False)
-    y_max: float = field(init=False)
-    patterns_per_row: int = field(init=False)
-    height_ratio: float = field(init=False)
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
+    patterns_per_row: int
+    height_ratio: float
 
-    def __post_init__(self):
-        patterns_per_row = -(-self.total_patterns // self.rows)
-        height_ratio = (4 * patterns_per_row - self.right_buffer + self.left_buffer) / (2.5 * self.rows)
-        x_min = -self.left_buffer
-        x_max = 4 * patterns_per_row - self.right_buffer
+    def __init__(self, total_patterns: int, rows: int, left_buffer: float = 0.25, right_buffer: float = 0.75):
+        patterns_per_row = -(-total_patterns // rows)
+        height_ratio = (4 * patterns_per_row - right_buffer + left_buffer) / (2.5 * rows)
+        x_min = -left_buffer
+        x_max = 4 * patterns_per_row - right_buffer
         y_min = 0
-        y_max = 2.5 * self.rows
+        y_max = 2.5 * rows
+
         object.__setattr__(self, 'patterns_per_row', patterns_per_row)
         object.__setattr__(self, 'height_ratio', height_ratio)
         object.__setattr__(self, 'x_min', x_min)

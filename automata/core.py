@@ -4,7 +4,7 @@ Currently limited to simple elementary (1D, multi-state, immediate neighbor) aut
 using various boundary conditions.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import matplotlib.axes
 import numpy as np
@@ -62,6 +62,8 @@ class Rule:
         input_patterns.reverse()  # Ordered to match rule number, which corresponds to output order by definition
         self.pattern_to_output = dict(zip(input_patterns, self.encoding))
 
+        assert len(self.pattern_to_output) == self.n_input_patterns
+
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
@@ -107,39 +109,62 @@ class Rule:
         def get_default_cell_colors(base):
             return [str(c) for c in np.linspace(1, 0, base)]
 
+        # def _get_plot_params(self, total_patterns: int) -> _PlotParams:
+        #     return _PlotParams(total_patterns, self.rows)
+
+        # @dataclass
+        # class _PlotParams:
+        #     left_buffer: float = 0.25
+        #     right_buffer: float = 0.75
+        #     x_min: float = None
+        #     x_max: float = None
+        #     y_min: float = None
+        #     y_max: float = None
+        #     patterns_per_row: int = None
+        #     height_ratio: float = None
+        #
+        # def _get_plot_params(self, total_patterns: int) -> _PlotParams:
+        #     plot_params = self._PlotParams()
+        #     plot_params.patterns_per_row = -(-total_patterns // self.rows)
+        #     plot_params.height_ratio = (4 * plot_params.patterns_per_row -
+        #                                 plot_params.right_buffer + plot_params.left_buffer) / (2.5 * self.rows)
+        #     plot_params.x_min = -plot_params.left_buffer
+        #     plot_params.x_max = 4 * plot_params.patterns_per_row - plot_params.right_buffer
+        #     plot_params.y_min = 0
+        #     plot_params.y_max = 2.5 * self.rows
+        #
+        #     return plot_params
+
     def best_rows(self, max_per_row=14):
         total = self.n_input_patterns
         return next(filter(lambda d: total % d == 0 and total // d <= max_per_row, range(1, total + 1)), total)
 
-    def _plot_display(self, ax: matplotlib.axes.Axes, display_params: DisplayParams) -> float:
+    def _plot_display(self, ax: matplotlib.axes.Axes, display_params: DisplayParams) -> None:
 
         cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.base)
 
-        cell_size = 1
-        patterns_per_row = -(-len(self.pattern_to_output) // display_params.rows)
-
-        def draw_cell(x, y, d):
+        def draw_cell(x, y, d, cell_size=1):
             rect = Rectangle((x, y), cell_size, cell_size,
                              edgecolor=display_params.grid_color, facecolor=cell_color_mapping[d],
                              linewidth=display_params.grid_thickness)
             ax.add_patch(rect)
 
-        ax.set_xlim(-0.25, 4 * patterns_per_row - 0.75)
-        ax.set_ylim(0, 2.5 * display_params.rows)
+        # noinspection PyProtectedMember
+        plot_params = _PlotParams(self.n_input_patterns, display_params.rows)
+        ax.set_xlim(plot_params.x_min, plot_params.x_max)
+        ax.set_ylim(plot_params.y_min, plot_params.y_max)
         ax.set_aspect('equal')
         ax.axis('off')
-        # REV - Cleaner way to get aspect ratio?
-        height_ratio = ((ax.get_xlim()[1] - ax.get_xlim()[0]) / (ax.get_ylim()[1] - ax.get_ylim()[0]))
 
         for pattern_idx, input_pattern in enumerate(self.pattern_to_output.keys()):
-            row_idx = pattern_idx // patterns_per_row
+            row_idx = pattern_idx // plot_params.patterns_per_row
 
             # Adjust y position based on row index
             y_top_adj = 2.5 * (display_params.rows - row_idx - 1) + 1.5
             y_bottom_adj = 2.5 * (display_params.rows - row_idx - 1) + 0.5
 
             # Adjust x position based on the center_offset
-            x_shift = (pattern_idx % patterns_per_row) * 4
+            x_shift = (pattern_idx % plot_params.patterns_per_row) * 4
 
             # Draw the input digits
             for input_digit_pos, input_digit in enumerate(input_pattern):
@@ -147,23 +172,13 @@ class Rule:
             # Draw the output digit below the input, with a gap
             draw_cell(x_shift + 1, y_bottom_adj, self.pattern_to_output[input_pattern])
 
-        # plt.tight_layout()
-        return height_ratio
-
     def get_display(self, display_params: DisplayParams = None):
-
-        if display_params is None:
-            display_params = Rule.DisplayParams()
-
-        fig, ax = plt.subplots(figsize=(display_params.fig_width,
-                                        display_params.fig_width * 2.5 * display_params.rows /
-                                        (2 * (self.base ** self.input_span))))
-        height_ratio = self._plot_display(ax, display_params)
-        plt.tight_layout()
-        return fig, ax, height_ratio
+        return _get_display_grid(None, self,
+                                 None, display_params,
+                                 False, True)
 
     def display(self, display_params: DisplayParams = None):
-        _, _, _ = self.get_display(display_params)
+        _, _ = self.get_display(display_params)
         plt.show()
 
 
@@ -411,51 +426,93 @@ class CellularAutomata:
     def get_display(self, display_params: DisplayParams = None,
                     rule_display_params: Rule.DisplayParams = None,
                     show_rule: bool = False):
-
-        if display_params is None:
-            display_params = CellularAutomata.DisplayParams()
-
-        if rule_display_params is not None:
-            show_rule = True
-
-        if show_rule:
-            if rule_display_params is None:
-                rule_display_params = Rule.DisplayParams(cell_colors=display_params.cell_colors)
-
-            # Create a dummy figure to compute rule's aspect ratio
-            # REV - This seems pretty stupid, there has to be a better way than calling self.rule._plot_display twice
-            dummy_fig, dummy_ax, rule_height_ratio = self.rule.get_display(rule_display_params)
-            plt.close(dummy_fig)
-            h_rule = display_params.fig_width / rule_height_ratio
-        else:
-            h_rule = 0
-
-        h_lattice = display_params.fig_width * self.frame_steps / self.frame_width
-
-        # Create main figure with adjusted height
-        total_height = h_rule + h_lattice + 0.05 * display_params.fig_width  # Adding small gap
-        fig = plt.figure(figsize=(display_params.fig_width, total_height))
-
-        # GridSpec layout
-        gs = gridspec.GridSpec(2, 1,
-                               height_ratios=[h_rule, h_lattice], hspace=0.0005*display_params.fig_width)
-
-        if show_rule:
-            # Rule plot
-            rule_ax = fig.add_subplot(gs[0])
-            # noinspection PyProtectedMember
-            self.rule._plot_display(rule_ax, rule_display_params)
-        else:
-            rule_ax = None
-
-        # Lattice plot
-        lattice_ax = fig.add_subplot(gs[1])
-        self._plot_display(lattice_ax, display_params)
-
-        return fig, (rule_ax, lattice_ax)
+        return _get_display_grid(self, self.rule,
+                                 display_params, rule_display_params,
+                                 True, show_rule)
 
     def display(self, display_params: DisplayParams = None,
                 rule_display_params: Rule.DisplayParams = None,
                 show_rule: bool = False):
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
+
+
+@dataclass(frozen=True)
+class _PlotParams:
+    total_patterns: int
+    rows: int
+    left_buffer: float = 0.25
+    right_buffer: float = 0.75
+    x_min: float = field(init=False)
+    x_max: float = field(init=False)
+    y_min: float = field(init=False)
+    y_max: float = field(init=False)
+    patterns_per_row: int = field(init=False)
+    height_ratio: float = field(init=False)
+
+    def __post_init__(self):
+        patterns_per_row = -(-self.total_patterns // self.rows)
+        height_ratio = (4 * patterns_per_row - self.right_buffer + self.left_buffer) / (2.5 * self.rows)
+        x_min = -self.left_buffer
+        x_max = 4 * patterns_per_row - self.right_buffer
+        y_min = 0
+        y_max = 2.5 * self.rows
+        object.__setattr__(self, 'patterns_per_row', patterns_per_row)
+        object.__setattr__(self, 'height_ratio', height_ratio)
+        object.__setattr__(self, 'x_min', x_min)
+        object.__setattr__(self, 'x_max', x_max)
+        object.__setattr__(self, 'y_min', y_min)
+        object.__setattr__(self, 'y_max', y_max)
+
+
+def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
+                      display_params: CellularAutomata.DisplayParams | None,
+                      rule_display_params: Rule.DisplayParams | None,
+                      show_automaton: bool, show_rule: bool):
+    if display_params is None:
+        display_params = CellularAutomata.DisplayParams()
+
+    if rule_display_params is not None:
+        show_rule = True
+
+    if show_rule:
+        if rule_display_params is None:
+            rule_display_params = Rule.DisplayParams(cell_colors=display_params.cell_colors)
+        # noinspection PyProtectedMember
+        h_rule = (display_params.fig_width /
+                  _PlotParams(rule.n_input_patterns, rule_display_params.rows).height_ratio)
+    else:
+        h_rule = 0
+
+    if show_automaton:
+        h_lattice = display_params.fig_width * automaton.frame_steps / automaton.frame_width
+    else:
+        h_lattice = 0
+
+    # Create main figure with adjusted height
+    total_height = h_rule + h_lattice
+    fig = plt.figure(figsize=(display_params.fig_width, total_height))
+
+    # GridSpec layout
+    gs = gridspec.GridSpec(2, 1,
+                           height_ratios=[h_rule, h_lattice], hspace=0.0005 * display_params.fig_width)
+
+    if show_rule:
+        rule_ax = fig.add_subplot(gs[0])
+        # noinspection PyProtectedMember
+        rule._plot_display(rule_ax, rule_display_params)
+    else:
+        rule_ax = None
+
+    if show_automaton:
+        lattice_ax = fig.add_subplot(gs[1])
+        # noinspection PyProtectedMember
+        automaton._plot_display(lattice_ax, display_params)
+    else:
+        lattice_ax = None
+
+    return fig, (rule_ax, lattice_ax)
+
+
+# Do not export underscore functions
+__all__ = [name for name in dir() if not name.startswith('_')]

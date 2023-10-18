@@ -1,5 +1,5 @@
 # noinspection PyPackageRequirements
-from ipywidgets import IntSlider, Checkbox, ColorPicker, FloatSlider, interact
+from ipywidgets import IntSlider, Checkbox, ColorPicker, FloatSlider, Combobox, interact
 from .core import Rule, HighlightBounds, CellularAutomata
 
 # USE - For use in Jupyter notebooks; assumes ipywidgets is installed in the Python environment
@@ -17,6 +17,38 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
         rule_slider.max = Rule(0, base=int(base_slider.value)).n_rules - 1
     base_slider.observe(update_r_max, names='value')
     update_r_max()
+
+    initial_conditions_entry = Combobox(
+        value='1',
+        options=[],
+        description='Initial conditions',
+        ensure_option=False,  # allowing freeform input
+        disabled=False
+    )
+
+    def validate_initial_conditions_entry(change):
+        valid_chars = Rule.ALPHABET[:base_slider.value]
+        new_value = ''.join([ch for ch in change['new'] if ch in valid_chars])
+
+        # If the new value is different (i.e., some characters were filtered out),
+        # set the Combobox value to '1'. Otherwise, add to options if not already present.
+        if new_value != change['new']:
+            initial_conditions_entry.value = '1'
+        else:
+            if new_value and new_value not in initial_conditions_entry.options:
+                initial_conditions_entry.options = list(initial_conditions_entry.options) + [new_value]
+    initial_conditions_entry.observe(validate_initial_conditions_entry, names='value')
+    # validate_initial_conditions(chang=None)
+
+    def validate_initial_conditions_for_base(change):
+        valid_chars = Rule.ALPHABET[:base_slider.value]
+        if not all(ch in valid_chars for ch in initial_conditions_entry.value):
+            initial_conditions_entry.value = '1'
+
+    # Observe changes to the base_slider's value
+    base_slider.observe(validate_initial_conditions_for_base, names='value')
+
+
 
     use_highlight_checkbox = Checkbox(value=False, description='Focus Highlight')
     h_start_slider = IntSlider(min=0, max=frame_steps, step=1, value=0, description='Start')
@@ -66,6 +98,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
     controls = {
         'rule': rule_slider,
         'base': base_slider,
+        'initial_conditions': initial_conditions_entry,
         'use_highlight': use_highlight_checkbox,
         'h_start': h_start_slider,
         'h_width': h_width_slider,
@@ -90,6 +123,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
 
 
 def display_automaton(rule=90, base=2,
+                      initial_conditions='1',
                       use_highlight=False, h_start=0, h_width=21, h_offset=0, h_steps=20,
                       grid_color='white', grid_thickness=0.2,
                       cell_color_0='black', cell_color_1='yellow', cell_color_2='red', cell_color_3='green',
@@ -102,7 +136,7 @@ def display_automaton(rule=90, base=2,
 
     colors = [cell_color_0, cell_color_1, cell_color_2, cell_color_3]
 
-    CellularAutomata(rule, '1', base=base,
+    CellularAutomata(rule, initial_conditions, base=base,
                      frame_steps=frame_steps, frame_width=frame_width).display(
         CellularAutomata.DisplayParams(
             fig_width=fig_width,

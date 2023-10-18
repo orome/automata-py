@@ -8,12 +8,12 @@ from .core import Rule, HighlightBounds, CellularAutomata
 _DISPLAY_BASE_MAX = 4
 
 
-def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
+def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> dict:
     rule_slider = IntSlider(min=0, max=Rule(0, base=2).n_rules - 1, step=1, value=90, description='Rule')
     base_slider = IntSlider(min=2, max=_DISPLAY_BASE_MAX, step=1, value=2, description='Base')
 
     # Adjust the max r to correspond to the base
-    def update_r_max(*_):
+    def update_r_max(*_) -> None:
         rule_slider.max = Rule(0, base=int(base_slider.value)).n_rules - 1
     base_slider.observe(update_r_max, names='value')
     update_r_max()
@@ -28,14 +28,14 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     rule_rows_slider = IntSlider(min=0, max=6, step=1, value=Rule(0, base=2).best_rows(),
                                  description='Rule rows')
 
-    def update_rule_rows_default(*_):
+    def update_rule_rows_default(*_) -> None:
         rule_rows_slider.value = Rule(0, base=int(base_slider.value)).best_rows()
 
     base_slider.observe(update_rule_rows_default, names='value')
     update_rule_rows_default()
 
     # Enable/disable h_start and h_width based on the checkbox
-    def update_highlight_controls(change=None):
+    def update_highlight_controls(change=None) -> None:
         new_value = use_highlight_checkbox.value if change is None else change.new
         h_start_slider.disabled = not new_value
         h_width_slider.disabled = not new_value
@@ -53,7 +53,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
                           3: ColorPicker(concise=True, value='green', disabled=False, description='3')}
 
     # Enable/disable cell color pickers based on current value of base
-    def update_grid_color_controls(*_):
+    def update_grid_color_controls(*_) -> None:
         for digit in cell_color_pickers.keys():
             if digit > int(base_slider.value) - 1:
                 cell_color_pickers[digit].layout.display = 'none'
@@ -94,7 +94,7 @@ def display_automaton(rule=90, base=2,
                       grid_color='white', grid_thickness=0.2,
                       cell_color_0='black', cell_color_1='yellow', cell_color_2='red', cell_color_3='green',
                       rule_rows=1,
-                      frame_steps=80, frame_width=151, fig_width=12):
+                      frame_steps=80, frame_width=151, fig_width=12) -> None:
     if not use_highlight:
         highlights = [HighlightBounds()]
     else:
@@ -116,7 +116,7 @@ def display_automaton(rule=90, base=2,
     return
 
 
-def interactive_display_automaton(frame_steps=80, frame_width=151, fig_width=12, display_parameters=None):
+def interactive_display_automaton(frame_steps=80, frame_width=151, fig_width=12, display_parameters=None) -> None:
     controls = get_controls(display_parameters=display_parameters,
                             frame_steps=frame_steps, frame_width=frame_width)
 

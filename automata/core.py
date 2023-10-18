@@ -66,7 +66,7 @@ class Rule:
     ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def get_cell_colors(color_list: [str], base: int):
+    def get_cell_colors(color_list: [str], base: int) -> {str: str}:
         cell_colors = {e: c for e, c in
                        zip(Rule.ALPHABET[:base],
                            color_list if color_list else Rule.DisplayParams.get_default_cell_colors(base))}
@@ -108,7 +108,7 @@ class Rule:
         def get_default_cell_colors(base):
             return [str(c) for c in np.linspace(1, 0, base)]
 
-    def best_rows(self, max_per_row=14):
+    def best_rows(self, max_per_row: int = 14) -> int:
         total = self.n_input_patterns
         return next(filter(lambda d: total % d == 0 and total // d <= max_per_row, range(1, total + 1)), total)
 
@@ -145,12 +145,12 @@ class Rule:
             # Draw the output digit below the input, with a gap
             draw_cell(x_shift + 1, y_bottom_adj, self.pattern_to_output[input_pattern])
 
-    def get_display(self, display_params: DisplayParams = None):
+    def get_display(self, display_params: DisplayParams = None) -> (plt.Figure, (plt.Axes | None, plt.Axes | None)):
         return _get_display_grid(None, self,
                                  None, display_params,
                                  False, True)
 
-    def display(self, display_params: DisplayParams = None):
+    def display(self, display_params: DisplayParams = None) -> None:
         _, _ = self.get_display(display_params)
         plt.show()
 
@@ -213,11 +213,11 @@ class CellularAutomata:
         self._initialized = True
 
     # Return the lattice, optionally with a slice specified using a SliceSpec object
-    def lattice(self, slice_spec: SliceSpec = None):
+    def lattice(self, slice_spec: SliceSpec = None) -> np.ndarray:
         slice_spec = self._validate_slice_bounds(slice_spec, check_bounds=True)
         return self._lattice[slice_spec.range()]
 
-    def _get_boundary_values(self, current_row):
+    def _get_boundary_values(self, current_row) -> (str, str):
         """
         Returns boundary values based on boundary condition and current row.
         """
@@ -228,7 +228,7 @@ class CellularAutomata:
         elif self.boundary_condition == "one":
             return Rule.ALPHABET[1], Rule.ALPHABET[1]
 
-    def _compute_automaton(self):
+    def _compute_automaton(self) -> None:
         """
         Generates the automaton based on the rule and initial conditions using a vectorized approach.
         """
@@ -249,7 +249,7 @@ class CellularAutomata:
             # Use the patterns to directly get the output values from the rule's pattern_to_output dictionary
             self._lattice[row] = [self.rule.pattern_to_output[pattern] for pattern in patterns]
 
-    def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool):
+    def _validate_highlight_bounds(self, highlight: HighlightBounds, check_bounds: bool) -> None:
         """
         Checks bounds for highlighting and returns error messages for any explicitly provided invalid bounds.
         Set any unspecified highlight bounds to default values.
@@ -293,7 +293,7 @@ class CellularAutomata:
             highlight.steps = max(0, highlight.steps + highlight.start_step)
             highlight.start_step = 0
 
-    def _validate_slice_bounds(self, slice_spec: SliceSpec, check_bounds: bool):
+    def _validate_slice_bounds(self, slice_spec: SliceSpec, check_bounds: bool) -> SliceSpec:
         """
         Check bounds for slice and error messages for any invalid bounds.
         Return a SliceSpec that is valid for the lattice.
@@ -392,14 +392,14 @@ class CellularAutomata:
 
     def get_display(self, display_params: DisplayParams = None,
                     rule_display_params: Rule.DisplayParams = None,
-                    show_rule: bool = False):
+                    show_rule: bool = False) -> (plt.Figure, (plt.Axes | None, plt.Axes | None)):
         return _get_display_grid(self, self.rule,
                                  display_params, rule_display_params,
                                  True, show_rule)
 
     def display(self, display_params: DisplayParams = None,
                 rule_display_params: Rule.DisplayParams = None,
-                show_rule: bool = False):
+                show_rule: bool = False) -> None:
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
 
@@ -432,7 +432,7 @@ class _PlotParams:
 def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
                       display_params: CellularAutomata.DisplayParams | None,
                       rule_display_params: Rule.DisplayParams | None,
-                      show_automaton: bool, show_rule: bool):
+                      show_automaton: bool, show_rule: bool) -> (plt.Figure, (plt.Axes | None, plt.Axes | None)):
     if display_params is None:
         display_params = CellularAutomata.DisplayParams()
 

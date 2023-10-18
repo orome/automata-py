@@ -5,18 +5,18 @@ from .core import Rule, HighlightBounds, CellularAutomata
 # USE - For use in Jupyter notebooks; assumes ipywidgets is installed in the Python environment
 
 # TBD - Should be better coordinated with number of colors and color controls
-DISPLAY_BASE_MAX = 4
+_DISPLAY_BASE_MAX = 4
 
 
 def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     rule_slider = IntSlider(min=0, max=Rule(0, base=2).n_rules - 1, step=1, value=90, description='Rule')
-    base_slider = IntSlider(min=2, max=DISPLAY_BASE_MAX, step=1, value=2, description='Base')
+    base_slider = IntSlider(min=2, max=_DISPLAY_BASE_MAX, step=1, value=2, description='Base')
 
     # Adjust the max r to correspond to the base
-    def update_r_max(*args):
-        rule_slider.max = Rule(0, base=base_slider.value).n_rules - 1
-
+    def update_r_max(*_):
+        rule_slider.max = Rule(0, base=int(base_slider.value)).n_rules - 1
     base_slider.observe(update_r_max, names='value')
+    update_r_max()
 
     use_highlight_checkbox = Checkbox(value=False, description='Focus Highlight')
     h_start_slider = IntSlider(min=0, max=frame_steps, step=1, value=0, description='Start')
@@ -28,8 +28,8 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     rule_rows_slider = IntSlider(min=0, max=6, step=1, value=Rule(0, base=2).best_rows(),
                                  description='Rule rows')
 
-    def update_rule_rows_default(*args):
-        rule_rows_slider.value = Rule(0, base=base_slider.value).best_rows()
+    def update_rule_rows_default(*_):
+        rule_rows_slider.value = Rule(0, base=int(base_slider.value)).best_rows()
 
     base_slider.observe(update_rule_rows_default, names='value')
     update_rule_rows_default()
@@ -45,7 +45,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
     update_highlight_controls()
 
     grid_color_picker = ColorPicker(concise=True, value='white', disabled=False, description='Grid color')
-    grid_thickness_slider = FloatSlider(min=0.05, max=2, step=0.025, value=0.2, description='Grid thickness')
+    grid_thickness_slider = FloatSlider(min=0, max=2, step=0.025, value=0.2, description='Grid thickness')
 
     cell_color_pickers = {0: ColorPicker(concise=True, value='black', disabled=False, description='0'),
                           1: ColorPicker(concise=True, value='yellow', disabled=False, description='1'),
@@ -53,16 +53,9 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
                           3: ColorPicker(concise=True, value='green', disabled=False, description='3')}
 
     # Enable/disable cell color pickers based on current value of base
-    def update_grid_color_controls(*args):
-        # for digit in cell_colors.keys():
-        #     cell_colors[digit].disabled = digit > b.value - 1
-        # for digit in cell_colors.keys():
-        #     if digit > b.value - 1:
-        #         cell_colors[digit].layout.visibility = 'hidden'
-        #     else:
-        #         cell_colors[digit].layout.visibility = 'visible'
+    def update_grid_color_controls(*_):
         for digit in cell_color_pickers.keys():
-            if digit > base_slider.value - 1:
+            if digit > int(base_slider.value) - 1:
                 cell_color_pickers[digit].layout.display = 'none'
             else:
                 cell_color_pickers[digit].layout.display = 'flex'  # REV - or 'block' or 'inline'
@@ -83,7 +76,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201):
         'cell_color_0': cell_color_pickers[0],
         'cell_color_1': cell_color_pickers[1],
         'cell_color_2': cell_color_pickers[2],
-        'cell_color_3': cell_color_pickers[3],  # REV - Can't be greater than DISPLAY_BASE_MAX-1
+        'cell_color_3': cell_color_pickers[3],  # REV - Can't be greater than _DISPLAY_BASE_MAX-1
         'rule_rows': rule_rows_slider
     }
 

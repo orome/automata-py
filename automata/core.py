@@ -1,7 +1,6 @@
 """
 A simple cellular automata based on those discussed in Wolfram's A New Kind of Science.
-Currently limited to simple elementary (1D, multi-state, immediate neighbor) automata,
-using various boundary conditions.
+Currently limited to 1D, multi-state, immediate neighbor automata, using various boundary conditions.
 """
 
 from dataclasses import dataclass
@@ -38,7 +37,7 @@ class SliceSpec:
 
 
 class Rule:
-    def __init__(self, rule_number, base=2):
+    def __init__(self, rule_number: int, base: int = 2):
 
         self.input_range = 1  # TBD - generalize to allow for larger neighborhoods, using argument
         # !!! - CellularAutomata currently makes no use of input_range; input_range of 1 is hard coded there
@@ -108,32 +107,6 @@ class Rule:
         @staticmethod
         def get_default_cell_colors(base):
             return [str(c) for c in np.linspace(1, 0, base)]
-
-        # def _get_plot_params(self, total_patterns: int) -> _PlotParams:
-        #     return _PlotParams(total_patterns, self.rows)
-
-        # @dataclass
-        # class _PlotParams:
-        #     left_buffer: float = 0.25
-        #     right_buffer: float = 0.75
-        #     x_min: float = None
-        #     x_max: float = None
-        #     y_min: float = None
-        #     y_max: float = None
-        #     patterns_per_row: int = None
-        #     height_ratio: float = None
-        #
-        # def _get_plot_params(self, total_patterns: int) -> _PlotParams:
-        #     plot_params = self._PlotParams()
-        #     plot_params.patterns_per_row = -(-total_patterns // self.rows)
-        #     plot_params.height_ratio = (4 * plot_params.patterns_per_row -
-        #                                 plot_params.right_buffer + plot_params.left_buffer) / (2.5 * self.rows)
-        #     plot_params.x_min = -plot_params.left_buffer
-        #     plot_params.x_max = 4 * plot_params.patterns_per_row - plot_params.right_buffer
-        #     plot_params.y_min = 0
-        #     plot_params.y_max = 2.5 * self.rows
-        #
-        #     return plot_params
 
     def best_rows(self, max_per_row=14):
         total = self.n_input_patterns
@@ -216,7 +189,6 @@ class CellularAutomata:
 
         self.rule = Rule(self.rule_number, base)
 
-        # CHANGE: Initialize the lattice with zeros as characters
         self._lattice = np.empty((self.frame_steps, self.frame_width), dtype='<U1')
         self._lattice.fill(Rule.ALPHABET[0])
 
@@ -236,15 +208,14 @@ class CellularAutomata:
                 raise CellularAutomataError(f"Initial condition contains invalid symbol '{char}'.")
             self._lattice[0, start + idx] = char
 
-        # Compute the automaton
         self._compute_automaton()
 
         self._initialized = True
 
     # Return the lattice, optionally with a slice specified using a SliceSpec object
-    def lattice(self, slice_steps: SliceSpec = None):
-        slice_steps = self._validate_slice_bounds(slice_steps, check_bounds=True)
-        return self._lattice[slice_steps.range()]
+    def lattice(self, slice_spec: SliceSpec = None):
+        slice_spec = self._validate_slice_bounds(slice_spec, check_bounds=True)
+        return self._lattice[slice_spec.range()]
 
     def _get_boundary_values(self, current_row):
         """
@@ -366,7 +337,7 @@ class CellularAutomata:
     class DisplayParams:
         fig_width: float = 12
         highlights: [HighlightBounds] = (HighlightBounds(),)
-        slice_steps: SliceSpec = None
+        slice_spec: SliceSpec = None
         highlight_mask: float = 0.3
         grid_color: str = None
         grid_thickness: float = 0.5
@@ -385,7 +356,7 @@ class CellularAutomata:
         for highlight in display_params.highlights:
             self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
 
-        display_params.slice_steps = self._validate_slice_bounds(display_params.slice_steps, check_bounds=False)
+        display_params.slice_spec = self._validate_slice_bounds(display_params.slice_spec, check_bounds=False)
 
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
         mask = np.ones(self._lattice.shape, dtype=float) * display_params.highlight_mask
@@ -396,28 +367,24 @@ class CellularAutomata:
 
         # REV - See if there's a better way to do this
         # Convert the encoded lattice data to color using the color's dictionary.
-        color_strings = np.vectorize(cell_color_mapping.get)(self._lattice[display_params.slice_steps.range()])
+        color_strings = np.vectorize(cell_color_mapping.get)(self._lattice[display_params.slice_spec.range()])
         # Convert the entire color_strings array to an array of RGBA values
         rgba_values = mpl.colors.to_rgba_array(color_strings.ravel())
         # Reshape the rgba_values to match the shape of the color_strings array with an additional dimension for RGBA
         rgb_lattice = rgba_values.reshape(*color_strings.shape, 4)
         # Mask the highlighted region
-        rgb_lattice[..., 3] *= mask[display_params.slice_steps.range()]
+        rgb_lattice[..., 3] *= mask[display_params.slice_spec.range()]
 
         ax.imshow(rgb_lattice, aspect='equal', interpolation='none')
 
         # Add grid with lines around each cell if grid_color is specified
-        if display_params.grid_color:
+        if display_params.grid_color and display_params.grid_thickness > 0:
             ax.grid(which='minor', color=display_params.grid_color, linewidth=display_params.grid_thickness)
             ax.set_xticks(np.arange(-.5, self.frame_width, 1), minor=True)
-            # Note: not using frame_steps here
-            ax.set_yticks(np.arange(-.5, display_params.slice_steps.steps, 1), minor=True)
-
-            # Turn off major grid lines
+            # Note: not using frame_steps here; only showing the slice
+            ax.set_yticks(np.arange(-.5, display_params.slice_spec.steps, 1), minor=True)
             ax.grid(which='major', visible=False)
-
-            ax.tick_params(which='both', bottom=False, left=False, labelbottom=False,
-                           labelleft=False)  # Hide ticks and labels
+            ax.tick_params(which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
         else:
             ax.axis('off')
 
@@ -436,33 +403,6 @@ class CellularAutomata:
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
 
-
-# @dataclass(frozen=True)
-# class _PlotParams:
-#     total_patterns: int
-#     rows: int
-#     left_buffer: float = 0.25
-#     right_buffer: float = 0.75
-#     x_min: float = field(init=False)
-#     x_max: float = field(init=False)
-#     y_min: float = field(init=False)
-#     y_max: float = field(init=False)
-#     patterns_per_row: int = field(init=False)
-#     height_ratio: float = field(init=False)
-#
-#     def __post_init__(self):
-#         patterns_per_row = -(-self.total_patterns // self.rows)
-#         height_ratio = (4 * patterns_per_row - self.right_buffer + self.left_buffer) / (2.5 * self.rows)
-#         x_min = -self.left_buffer
-#         x_max = 4 * patterns_per_row - self.right_buffer
-#         y_min = 0
-#         y_max = 2.5 * self.rows
-#         object.__setattr__(self, 'patterns_per_row', patterns_per_row)
-#         object.__setattr__(self, 'height_ratio', height_ratio)
-#         object.__setattr__(self, 'x_min', x_min)
-#         object.__setattr__(self, 'x_max', x_max)
-#         object.__setattr__(self, 'y_min', y_min)
-#         object.__setattr__(self, 'y_max', y_max)
 
 @dataclass(frozen=True)
 class _PlotParams:
@@ -513,11 +453,7 @@ def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
     else:
         h_lattice = 0
 
-    # Create main figure with adjusted height
-    total_height = h_rule + h_lattice
-    fig = plt.figure(figsize=(display_params.fig_width, total_height))
-
-    # GridSpec layout
+    fig = plt.figure(figsize=(display_params.fig_width, h_rule + h_lattice))
     gs = gridspec.GridSpec(2, 1,
                            height_ratios=[h_rule, h_lattice], hspace=0.0005 * display_params.fig_width)
 
@@ -536,7 +472,3 @@ def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
         lattice_ax = None
 
     return fig, (rule_ax, lattice_ax)
-
-
-# Do not export underscore functions
-__all__ = [name for name in dir() if not name.startswith('_')]

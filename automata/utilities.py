@@ -1,11 +1,13 @@
 # noinspection PyPackageRequirements
-from ipywidgets import IntSlider, Checkbox, ColorPicker, FloatSlider, Combobox, interact
-from .core import Rule, HighlightBounds, CellularAutomata
+from ipywidgets import IntSlider, Checkbox, ColorPicker, FloatSlider, Combobox, IntRangeSlider, interact
+from .core import Rule, SliceSpec, HighlightBounds, CellularAutomata
 
 # USE - For use in Jupyter notebooks; assumes ipywidgets is installed in the Python environment
 
 # TBD - Should be better coordinated with number of colors and color controls
 _DISPLAY_BASE_MAX = 4
+
+_MIN_SLICE_STEPS = 1
 
 
 def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> dict:
@@ -33,14 +35,14 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
         # If the new value is different (i.e., some characters were filtered out),
         # set the Combobox value to '1'. Otherwise, add to options if not already present.
         if new_value != change['new']:
-            initial_conditions_entry.value = '1'
+            initial_conditions_entry.value = new_value
         else:
             if new_value and new_value not in initial_conditions_entry.options:
                 initial_conditions_entry.options = list(initial_conditions_entry.options) + [new_value]
     initial_conditions_entry.observe(validate_initial_conditions_entry, names='value')
     # validate_initial_conditions(chang=None)
 
-    def validate_initial_conditions_for_base(change):
+    def validate_initial_conditions_for_base(*_):
         valid_chars = Rule.ALPHABET[:base_slider.value]
         if not all(ch in valid_chars for ch in initial_conditions_entry.value):
             initial_conditions_entry.value = '1'
@@ -48,7 +50,41 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
     # Observe changes to the base_slider's value
     base_slider.observe(validate_initial_conditions_for_base, names='value')
 
+    slice_slider = IntRangeSlider(
+        value=[0, frame_steps],
+        min=0,
+        max=frame_steps,  # TBD - Change when frame_steps set by a control
+        step=1,
+        description='Slice',
+        disabled=False,
+        continuous_update=True,
+        orientation='horizontal',
+        readout=True,
+        readout_format='d',
+    )
 
+    def enforce_gap(change):
+        old_lower, old_upper = change['old']
+        lower, upper = change['new']
+
+        if upper - lower < _MIN_SLICE_STEPS:
+            # If the upper value has been moved most recently
+            if upper != old_upper:
+                new_lower = upper - _MIN_SLICE_STEPS
+                # Ensure the new lower value isn't out of bounds
+                if new_lower < slice_slider.min:
+                    slice_slider.value = (slice_slider.min, slice_slider.min + _MIN_SLICE_STEPS)
+                else:
+                    slice_slider.value = (new_lower, upper)
+            # If the lower value has been moved most recently
+            elif lower != old_lower:
+                new_upper = lower + _MIN_SLICE_STEPS
+                # Ensure the new upper value isn't out of bounds
+                if new_upper > slice_slider.max:
+                    slice_slider.value = (slice_slider.max - _MIN_SLICE_STEPS, slice_slider.max)
+                else:
+                    slice_slider.value = (lower, new_upper)
+    slice_slider.observe(enforce_gap, names=['value'])
 
     use_highlight_checkbox = Checkbox(value=False, description='Focus Highlight')
     h_start_slider = IntSlider(min=0, max=frame_steps, step=1, value=0, description='Start')
@@ -99,6 +135,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
         'rule': rule_slider,
         'base': base_slider,
         'initial_conditions': initial_conditions_entry,
+        'slice_bounds': slice_slider,
         'use_highlight': use_highlight_checkbox,
         'h_start': h_start_slider,
         'h_width': h_width_slider,
@@ -124,6 +161,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
 
 def display_automaton(rule=90, base=2,
                       initial_conditions='1',
+                      slice_bounds=None,
                       use_highlight=False, h_start=0, h_width=21, h_offset=0, h_steps=20,
                       grid_color='white', grid_thickness=0.2,
                       cell_color_0='black', cell_color_1='yellow', cell_color_2='red', cell_color_3='green',
@@ -140,6 +178,8 @@ def display_automaton(rule=90, base=2,
                      frame_steps=frame_steps, frame_width=frame_width).display(
         CellularAutomata.DisplayParams(
             fig_width=fig_width,
+            slice_spec=SliceSpec(slice_bounds[0], slice_bounds[1]-slice_bounds[0])
+            if slice_bounds is not None else None,
             grid_color=grid_color, grid_thickness=grid_thickness,
             cell_colors=colors,
             highlights=highlights,

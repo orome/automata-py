@@ -353,10 +353,10 @@ class CellularAutomata:
 
         cell_color_mapping = Rule.get_cell_colors(display_params.cell_colors, self.rule.base)
 
-        for highlight in display_params.highlights:
-            self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
-
-        display_params.slice_spec = self._validate_slice_bounds(display_params.slice_spec, check_bounds=False)
+        # REV - Assumes _validate_highlight_bounds and _validate_slice_bounds by caller
+        # for highlight in display_params.highlights:
+        #     self._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
+        # display_params.slice_spec = self._validate_slice_bounds(display_params.slice_spec, check_bounds=False)
 
         # Create a mask for highlighting, constraining the highlighted region to the bounds of the lattice
         mask = np.ones(self._lattice.shape, dtype=float) * display_params.highlight_mask
@@ -433,29 +433,41 @@ def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
                       display_params: CellularAutomata.DisplayParams | None,
                       rule_display_params: Rule.DisplayParams | None,
                       show_automaton: bool, show_rule: bool) -> (plt.Figure, (plt.Axes | None, plt.Axes | None)):
+
+    assert not show_automaton or (show_automaton and automaton is not None)
+    assert not show_rule or (show_rule and rule is not None)
+
     if display_params is None:
         display_params = CellularAutomata.DisplayParams()
 
     if rule_display_params is not None:
         show_rule = True
 
+    if show_automaton:
+        for highlight in display_params.highlights:
+            # noinspection PyProtectedMember
+            automaton._validate_highlight_bounds(highlight, check_bounds=display_params.check_highlight_bounds)
+        # noinspection PyProtectedMember
+        display_params.slice_spec = automaton._validate_slice_bounds(display_params.slice_spec, check_bounds=False)
+
+    fig_width = display_params.fig_width if show_automaton else rule_display_params.fig_width
+
     if show_rule:
         if rule_display_params is None:
             rule_display_params = Rule.DisplayParams(cell_colors=display_params.cell_colors)
         # noinspection PyProtectedMember
-        h_rule = (display_params.fig_width /
-                  _PlotParams(rule.n_input_patterns, rule_display_params.rows).height_ratio)
+        h_rule = (fig_width / _PlotParams(rule.n_input_patterns, rule_display_params.rows).height_ratio)
     else:
         h_rule = 0
 
     if show_automaton:
-        h_lattice = display_params.fig_width * automaton.frame_steps / automaton.frame_width
+        h_lattice = fig_width * display_params.slice_spec.steps / automaton.frame_width
     else:
         h_lattice = 0
 
-    fig = plt.figure(figsize=(display_params.fig_width, h_rule + h_lattice))
+    fig = plt.figure(figsize=(fig_width, h_rule + h_lattice))
     gs = gridspec.GridSpec(2, 1,
-                           height_ratios=[h_rule, h_lattice], hspace=0.0005 * display_params.fig_width)
+                           height_ratios=[h_rule, h_lattice], hspace=0.0005 * fig_width)
 
     if show_rule:
         rule_ax = fig.add_subplot(gs[0])

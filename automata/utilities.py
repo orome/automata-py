@@ -1,8 +1,13 @@
 # noinspection PyPackageRequirements
-from ipywidgets import IntSlider, Checkbox, ColorPicker, FloatSlider, Combobox, IntRangeSlider, interact
+from IPython.display import display
+# noinspection PyPackageRequirements
+from ipywidgets import (IntSlider, Checkbox, ColorPicker, FloatSlider, Combobox, IntRangeSlider,
+                        Layout, VBox, HBox, interactive)
+
 from .core import Rule, SliceSpec, HighlightBounds, CellularAutomata
 
-# USE - For use in Jupyter notebooks; assumes ipywidgets is installed in the Python environment
+# USE - For use in Jupyter notebooks; assumes ipywidgets (and IPython) is installed in the Python environment
+
 
 # TBD - Should be better coordinated with number of colors and color controls
 _DISPLAY_BASE_MAX = 4
@@ -11,8 +16,8 @@ _MIN_SLICE_STEPS = 1
 
 
 def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> dict:
-    rule_slider = IntSlider(min=0, max=Rule(0, base=2).n_rules - 1, step=1, value=90, description='Rule')
-    base_slider = IntSlider(min=2, max=_DISPLAY_BASE_MAX, step=1, value=2, description='Base')
+    rule_slider = IntSlider(min=0, max=Rule(0, base=2).n_rules - 1, step=1, value=90, description='Rule:')
+    base_slider = IntSlider(min=2, max=_DISPLAY_BASE_MAX, step=1, value=2, description='Base:')
 
     # Adjust the max r to correspond to the base
     def update_r_max(*_) -> None:
@@ -23,7 +28,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
     initial_conditions_entry = Combobox(
         value='1',
         options=[],
-        description='Initial conditions',
+        description='Start:',
         ensure_option=False,  # allowing freeform input
         disabled=False
     )
@@ -55,7 +60,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
         min=0,
         max=frame_steps,  # TBD - Change when frame_steps set by a control
         step=1,
-        description='Slice',
+        description='Slice:',
         disabled=False,
         continuous_update=True,
         orientation='horizontal',
@@ -86,15 +91,15 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
                     slice_slider.value = (lower, new_upper)
     slice_slider.observe(enforce_gap, names=['value'])
 
-    use_highlight_checkbox = Checkbox(value=False, description='Focus Highlight')
-    h_start_slider = IntSlider(min=0, max=frame_steps, step=1, value=0, description='Start')
-    h_width_slider = IntSlider(min=1, max=frame_width, step=1, value=21, description='Width')
+    use_highlight_checkbox = Checkbox(value=False, description='Highlight')
+    h_start_slider = IntSlider(min=0, max=frame_steps, step=1, value=0, description='Start:')
+    h_width_slider = IntSlider(min=1, max=frame_width, step=1, value=21, description='Width:')
     h_offset_slider = IntSlider(min=-frame_width // 2, max=frame_width // 2, step=1, value=0,
-                                description='Offset')
-    h_steps_slider = IntSlider(min=1, max=frame_steps, step=1, value=20, description='Steps')
+                                description='Offset:')
+    h_steps_slider = IntSlider(min=1, max=frame_steps, step=1, value=20, description='Steps:')
 
     rule_rows_slider = IntSlider(min=0, max=6, step=1, value=Rule(0, base=2).best_rows(),
-                                 description='Rule rows')
+                                 description='Rule rows:')
 
     def update_rule_rows_default(*_) -> None:
         rule_rows_slider.value = Rule(0, base=int(base_slider.value)).best_rows()
@@ -112,13 +117,13 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
     use_highlight_checkbox.observe(update_highlight_controls, names='value')
     update_highlight_controls()
 
-    grid_color_picker = ColorPicker(concise=True, value='white', disabled=False, description='Grid color')
-    grid_thickness_slider = FloatSlider(min=0, max=2, step=0.025, value=0.2, description='Grid thickness')
+    grid_color_picker = ColorPicker(concise=True, value='white', disabled=False, description='Grid color:')
+    grid_thickness_slider = FloatSlider(min=0, max=2, step=0.025, value=0.2, description='Grid width:')
 
-    cell_color_pickers = {0: ColorPicker(concise=True, value='black', disabled=False, description='0'),
-                          1: ColorPicker(concise=True, value='yellow', disabled=False, description='1'),
-                          2: ColorPicker(concise=True, value='red', disabled=False, description='2'),
-                          3: ColorPicker(concise=True, value='green', disabled=False, description='3')}
+    cell_color_pickers = {0: ColorPicker(concise=True, value='black', disabled=False, description='0 ='),
+                          1: ColorPicker(concise=True, value='yellow', disabled=False, description='1 ='),
+                          2: ColorPicker(concise=True, value='red', disabled=False, description='2 ='),
+                          3: ColorPicker(concise=True, value='green', disabled=False, description='3 =')}
 
     # Enable/disable cell color pickers based on current value of base
     def update_grid_color_controls(*_) -> None:
@@ -194,6 +199,38 @@ def interactive_display_automaton(frame_steps=80, frame_width=151, fig_width=12,
     controls = get_controls(display_parameters=display_parameters,
                             frame_steps=frame_steps, frame_width=frame_width)
 
-    @interact(**controls)
+    # REV - Simpler version w/o layout
+    # @interact(**controls)
+    # def interactive_display(**kwargs):
+    #     display_automaton(**kwargs, frame_steps=frame_steps, frame_width=frame_width, fig_width=fig_width)
+
     def interactive_display(**kwargs):
         display_automaton(**kwargs, frame_steps=frame_steps, frame_width=frame_width, fig_width=fig_width)
+
+    interactive_controls = interactive(interactive_display, **controls)
+
+    column_layout = Layout(
+        border='none',
+        margin='0px',
+        padding='0px',
+        width='25%',
+        display='flex',
+        flex_flow='column',
+        align_items='flex-start',
+    )
+
+    output = interactive_controls.children[-1]
+
+    column1_controls = ['rule', 'base', 'initial_conditions',
+                        'cell_color_0', 'cell_color_1', 'cell_color_2', 'cell_color_3']
+    column2_controls = ['slice_bounds', 'grid_color', 'grid_thickness', 'rule_rows']
+    column3_controls = ['use_highlight', 'h_start', 'h_width', 'h_offset', 'h_steps']
+
+    column1 = VBox([controls[name] for name in column1_controls], layout=column_layout)
+    column2 = VBox([controls[name] for name in column2_controls], layout=column_layout)
+    column3 = VBox([controls[name] for name in column3_controls], layout=column_layout)
+
+    controls_layout = HBox([column1, column2, column3])
+
+    display(controls_layout)
+    display(output)

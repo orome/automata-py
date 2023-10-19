@@ -3,6 +3,8 @@ A simple cellular automata based on those discussed in Wolfram's A New Kind of S
 Currently limited to 1D, multi-state, immediate neighbor automata, using various boundary conditions.
 """
 
+import io
+import base64
 from dataclasses import dataclass
 
 import matplotlib.axes
@@ -403,6 +405,30 @@ class CellularAutomata:
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
 
+    def _repr_png_(self):
+        return _get_repr_img(self, self.rule, True, True, 'png')
+
+    def _repr_jpg_(self):
+        return _get_repr_img(self, self.rule, True, True, 'jpg')
+
+    # REV - This is a blurry mess
+    # def _repr_svg_(self):
+    #     return _get_repr_img(self, self.rule, True, True, 'svg')
+
+    # REV - Just a block that says 'Image'
+    # def _repr_html_(self):
+    #     return _get_repr_img(self, self.rule, True, False, 'html')
+
+    # REV - Returns object
+    # def _repr_text_(self):
+    # def _repr_text_(self):
+    #     rows = [''.join(row) for row in self.lattice()]
+    #     text_representation = '\n'.join(rows)
+    #     return text_representation
+
+    def __repr__(self):
+        return '\n'.join([''.join(row) for row in self.lattice()])
+
 
 @dataclass(frozen=True)
 class _PlotParams:
@@ -484,3 +510,27 @@ def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
         lattice_ax = None
 
     return fig, (rule_ax, lattice_ax)
+
+
+def _get_repr_img(automaton: CellularAutomata, rule: Rule,
+                  show_automaton: bool, show_rule: bool,
+                  display_format: str) -> str | bytes:
+    fig, axes = _get_display_grid(automaton, rule,
+                                  display_params=CellularAutomata.DisplayParams(),
+                                  rule_display_params=Rule.DisplayParams(),
+                                  show_automaton=show_automaton, show_rule=show_rule)
+
+    if display_format in ['svg']:
+        buf = io.StringIO()
+    elif display_format in ['png', 'jpg', 'html']:
+        buf = io.BytesIO()
+    # noinspection PyUnboundLocalVariable
+    fig.savefig(buf, format=display_format if display_format != 'html' else 'svg')
+    plt.close(fig)
+
+    if display_format == 'html':
+        data = base64.b64encode(buf.getvalue()).decode("utf-8")
+        html = f'<img src="data:image/png;base64,{data}" />'
+        return html
+    else:
+        return buf.getvalue()

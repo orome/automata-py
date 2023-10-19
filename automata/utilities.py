@@ -9,7 +9,7 @@ from .core import Rule, SliceSpec, HighlightBounds, CellularAutomata
 # USE - For use in Jupyter notebooks; assumes ipywidgets (and IPython) is installed in the Python environment
 
 
-# TBD - Should be better coordinated with number of colors and color controls
+# TBD - Should be better coordinated with number of colors and color all_controls
 _DISPLAY_BASE_MAX = 4
 
 _MIN_SLICE_STEPS = 1
@@ -158,7 +158,7 @@ def get_controls(display_parameters=None, frame_steps=25, frame_width=201) -> di
     if display_parameters is None:
         display_parameters = controls.keys()
 
-    # Filter controls based on the provided list of control names
+    # Filter all_controls based on the provided list of control names
     selected_controls = {parameter: controls[parameter] for parameter in display_parameters if parameter in controls}
 
     return selected_controls
@@ -195,40 +195,53 @@ def display_automaton(rule=90, base=2,
     return
 
 
-def interactive_display_automaton(frame_steps=80, frame_width=151, fig_width=12, display_parameters=None) -> None:
-    controls = get_controls(display_parameters=display_parameters,
-                            frame_steps=frame_steps, frame_width=frame_width)
+def interactive_display_automaton(frame_steps=80, frame_width=151, fig_width=12, display_parameters=None,
+                                  controls=None) -> None:
+    all_controls = get_controls(display_parameters=display_parameters,
+                                frame_steps=frame_steps, frame_width=frame_width)
 
     # REV - Simpler version w/o layout
-    # @interact(**controls)
+    # @interact(**all_controls)
     # def interactive_display(**kwargs):
     #     display_automaton(**kwargs, frame_steps=frame_steps, frame_width=frame_width, fig_width=fig_width)
+
+    if controls is None:
+        controls = all_controls.keys()
 
     def interactive_display(**kwargs):
         display_automaton(**kwargs, frame_steps=frame_steps, frame_width=frame_width, fig_width=fig_width)
 
-    interactive_controls = interactive(interactive_display, **controls)
+    interactive_controls = interactive(interactive_display, **all_controls)
 
-    column_layout = Layout(
-        border='none',
-        margin='0px',
-        padding='0px',
-        width='25%',
-        display='flex',
-        flex_flow='column',
-        align_items='flex-start',
-    )
+    def get_column_layout(control_number: int):
+        return Layout(
+            border='none',
+            margin='0px',
+            padding='0px',
+            width='25%' if control_number > 0 else '0px',
+            display='flex',
+            flex_flow='column',
+            align_items='flex-start',
+            visibility='visible' if control_number > 0 else 'hidden'
+        )
 
     output = interactive_controls.children[-1]
 
-    column1_controls = ['rule', 'base', 'initial_conditions',
-                        'cell_color_0', 'cell_color_1', 'cell_color_2', 'cell_color_3']
-    column2_controls = ['slice_bounds', 'grid_color', 'grid_thickness', 'rule_rows']
-    column3_controls = ['use_highlight', 'h_start', 'h_width', 'h_offset', 'h_steps']
+    all_column1_controls = ['rule', 'base', 'initial_conditions',
+                            'cell_color_0', 'cell_color_1', 'cell_color_2', 'cell_color_3']
+    all_column2_controls = ['slice_bounds', 'grid_color', 'grid_thickness', 'rule_rows']
+    all_column3_controls = ['use_highlight', 'h_start', 'h_width', 'h_offset', 'h_steps']
 
-    column1 = VBox([controls[name] for name in column1_controls], layout=column_layout)
-    column2 = VBox([controls[name] for name in column2_controls], layout=column_layout)
-    column3 = VBox([controls[name] for name in column3_controls], layout=column_layout)
+    column1_controls = [c for c in controls if c in all_column1_controls]
+    column2_controls = [c for c in controls if c in all_column2_controls]
+    column3_controls = [c for c in controls if c in all_column3_controls]
+
+    column1 = VBox([all_controls[name] for name in column1_controls],
+                   layout=get_column_layout(control_number=len(column1_controls)))
+    column2 = VBox([all_controls[name] for name in column2_controls],
+                   layout=get_column_layout(control_number=len(column2_controls)))
+    column3 = VBox([all_controls[name] for name in column3_controls],
+                   layout=get_column_layout(control_number=len(column3_controls)))
 
     controls_layout = HBox([column1, column2, column3])
 

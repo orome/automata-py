@@ -405,29 +405,41 @@ class CellularAutomata:
         _, _ = self.get_display(display_params, rule_display_params, show_rule)
         plt.show()
 
+    def to_dict(self):
+        trim_zeros = lambda s: trim_zeros(s[1:-1]) if s.startswith('0') and s.endswith('0') else s
+        return {
+            "rule_number": self.rule_number,
+            "base": self.rule.base,
+            "frame_width": self.frame_width,
+            "frame_steps": self.frame_steps,
+            "boundary_condition": self.boundary_condition,
+            "initial_conditions": trim_zeros(''.join(self._lattice[0][1:-1]))
+            # "rule": self.rule.to_dict() if hasattr(self.rule, "to_dict") else str(self.rule),
+            # "lattice": ...
+        }
+
     def _repr_png_(self):
         return _get_repr_img(self, self.rule, True, True, 'png')
 
-    def _repr_jpg_(self):
+    def _repr_jpeg_(self):
         return _get_repr_img(self, self.rule, True, True, 'jpg')
 
+    def _repr_json_(self):
+        return self.to_dict()
+
     # REV - This is a blurry mess
-    # def _repr_svg_(self):
-    #     return _get_repr_img(self, self.rule, True, True, 'svg')
+    def _repr_svg_(self):
+        return _get_repr_img(self, self.rule, True, True, 'svg')
 
     # REV - Just a block that says 'Image'
-    # def _repr_html_(self):
-    #     return _get_repr_img(self, self.rule, True, False, 'html')
+    def _repr_html_(self):
+        return _get_repr_img(self, self.rule, True, False, 'html')
 
-    # REV - Returns object
-    # def _repr_text_(self):
-    # def _repr_text_(self):
-    #     rows = [''.join(row) for row in self.lattice()]
-    #     text_representation = '\n'.join(rows)
-    #     return text_representation
+    def _repr_text_(self):
+        return '\n'.join([''.join(row) for row in self._lattice])
 
     def __repr__(self):
-        return '\n'.join([''.join(row) for row in self.lattice()])
+        return '\n'.join([''.join(row) for row in self._lattice])
 
 
 @dataclass(frozen=True)
@@ -515,10 +527,10 @@ def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
 def _get_repr_img(automaton: CellularAutomata, rule: Rule,
                   show_automaton: bool, show_rule: bool,
                   display_format: str) -> str | bytes:
-    fig, axes = _get_display_grid(automaton, rule,
-                                  display_params=CellularAutomata.DisplayParams(),
-                                  rule_display_params=Rule.DisplayParams(),
-                                  show_automaton=show_automaton, show_rule=show_rule)
+    fig, _ = _get_display_grid(automaton, rule,
+                               display_params=CellularAutomata.DisplayParams(),
+                               rule_display_params=Rule.DisplayParams(),
+                               show_automaton=show_automaton, show_rule=show_rule)
 
     if display_format in ['svg']:
         buf = io.StringIO()
@@ -526,11 +538,11 @@ def _get_repr_img(automaton: CellularAutomata, rule: Rule,
         buf = io.BytesIO()
     # noinspection PyUnboundLocalVariable
     fig.savefig(buf, format=display_format if display_format != 'html' else 'svg')
+    buf.seek(0)
     plt.close(fig)
 
     if display_format == 'html':
-        data = base64.b64encode(buf.getvalue()).decode("utf-8")
-        html = f'<img src="data:image/png;base64,{data}" />'
-        return html
+        data = base64.b64encode(buf.getvalue()).decode('utf-8')
+        return f'<img src="data:image/png;base64,{data}" />'
     else:
         return buf.getvalue()

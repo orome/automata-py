@@ -232,6 +232,7 @@ def interactive_display_automaton(frame_steps=80, frame_width=151, fig_width=12,
     all_column2_controls = ['slice_bounds', 'grid_color', 'grid_thickness', 'rule_rows']
     all_column3_controls = ['use_highlight', 'h_start', 'h_width', 'h_offset', 'h_steps']
 
+    # column1_controls = filter(lambda item: item in controls, all_column1_controls)
     column1_controls = [c for c in controls if c in all_column1_controls]
     column2_controls = [c for c in controls if c in all_column2_controls]
     column3_controls = [c for c in controls if c in all_column3_controls]

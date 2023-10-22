@@ -183,13 +183,11 @@ class CellularAutomata:
             raise CellularAutomataError(
                 f"Invalid boundary condition. Must be one of {', '.join(valid_boundary_conditions)}.")
 
-        # Set properties
-        self.rule_number = rule_number
-        self.frame_width = frame_width
-        self.frame_steps = frame_steps
+        self.rule = Rule(rule_number, base)
         self.boundary_condition = boundary_condition
 
-        self.rule = Rule(self.rule_number, base)
+        self.frame_width = frame_width
+        self.frame_steps = frame_steps
 
         self._lattice = np.empty((self.frame_steps, self.frame_width), dtype='<U1')
         self._lattice.fill(Rule.ALPHABET[0])
@@ -198,6 +196,8 @@ class CellularAutomata:
         # If the string length is even, pad it with a '0' at the left end
         if len(initial_conditions) % 2 == 0:
             initial_conditions = Rule.ALPHABET[0] + initial_conditions
+        self.initial_conditions = initial_conditions
+
         center = self.frame_width // 2
         start = center - len(initial_conditions) // 2
 
@@ -406,34 +406,33 @@ class CellularAutomata:
         plt.show()
 
     def to_dict(self):
-        trim_zeros = lambda s: trim_zeros(s[1:-1]) if s.startswith('0') and s.endswith('0') else s
-        return {
-            "rule_number": self.rule_number,
-            "base": self.rule.base,
-            "frame_width": self.frame_width,
-            "frame_steps": self.frame_steps,
-            "boundary_condition": self.boundary_condition,
-            "initial_conditions": trim_zeros(''.join(self._lattice[0][1:-1]))
-            # "rule": self.rule.to_dict() if hasattr(self.rule, "to_dict") else str(self.rule),
-            # "lattice": ...
-        }
+        automaton_dict = {i: value for i, value in enumerate([''.join(row) for row in self._lattice])}
+        automaton_dict['args'] = {
+                "rule_number": self.rule.rule_number,
+                "base": self.rule.base,
+                "frame_width": self.frame_width,
+                "frame_steps": self.frame_steps,
+                "boundary_condition": self.boundary_condition,
+                "initial_conditions": self.initial_conditions
+            }
+        return automaton_dict
 
     def _repr_png_(self):
-        return _get_repr_img(self, self.rule, True, True, 'png')
+        return _get_repr_img(self, None, True, False, 'png')
 
     def _repr_jpeg_(self):
-        return _get_repr_img(self, self.rule, True, True, 'jpg')
+        return _get_repr_img(self, None, True, False, 'jpg')
 
     def _repr_json_(self):
         return self.to_dict()
 
     # REV - This is a blurry mess
     def _repr_svg_(self):
-        return _get_repr_img(self, self.rule, True, True, 'svg')
+        return _get_repr_img(self, None, True, False, 'svg')
 
     # REV - Just a block that says 'Image'
     def _repr_html_(self):
-        return _get_repr_img(self, self.rule, True, False, 'html')
+        return _get_repr_img(self, None, True, False, 'html')
 
     def _repr_text_(self):
         return '\n'.join([''.join(row) for row in self._lattice])
@@ -524,12 +523,12 @@ def _get_display_grid(automaton: CellularAutomata | None, rule: Rule | None,
     return fig, (rule_ax, lattice_ax)
 
 
-def _get_repr_img(automaton: CellularAutomata, rule: Rule,
+def _get_repr_img(automaton: CellularAutomata | None, rule: Rule | None,
                   show_automaton: bool, show_rule: bool,
                   display_format: str) -> str | bytes:
     fig, _ = _get_display_grid(automaton, rule,
                                display_params=CellularAutomata.DisplayParams(),
-                               rule_display_params=Rule.DisplayParams(),
+                               rule_display_params=Rule.DisplayParams() if show_rule else None,
                                show_automaton=show_automaton, show_rule=show_rule)
 
     if display_format in ['svg']:

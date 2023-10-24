@@ -33,8 +33,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Skip for Windows; path setting there isn't worth the trouble
       - name: Run eyeball tests
-        run: PYTHONPATH=. python tests/eyeball.py
+        if: runner.os != 'Windows'
+        run: |
+          PYTHONPATH=. python tests/eyeball.py
 
       - name: Test with pytest
         run: |

@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf8
 
-import sys
-import os
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')))
 from automata import *
 
 def eyeball_basic_ca(rule_number: int, initial_conditions: str, frame_steps: int, frame_width: int) -> None:

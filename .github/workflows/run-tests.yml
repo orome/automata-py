@@ -5,6 +5,9 @@ on:
   push:
     branches: [master, main, dev]
 
+env:
+  FORCE_COLOR: 1
+
 jobs:
 
   test:
@@ -37,6 +40,7 @@ jobs:
       - name: Run eyeball tests
         if: runner.os != 'Windows'
         run: |
+          pip install termcolor
           PYTHONPATH=. python tests/eyeball.py
 
       - name: Test with pytest

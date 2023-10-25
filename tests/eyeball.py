@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf8
 
+import termcolor
 from automata import *
 
 
@@ -15,12 +16,13 @@ def print_header(level, label='', mark=None) -> None:
     rule = (mark * (HEADER_LENGTH//2))[:((HEADER_LENGTH+1-(len(label)+2))//2)]
 
     # Must be outside f-strings to run on Python < 3.12
-    header_text = f"{rule} {label} {rule[::-1]}"[:HEADER_LENGTH]
-    header_start = '\033[1m' if level <= 1 else ''
-    header_end = '\033[0;0m' if level <= 1 else ''
+    header_text = termcolor.colored(f"{rule} {label} {rule[::-1]}"[:HEADER_LENGTH],
+                                    color='green' if level <= 0 else 'dark_grey',
+                                    on_color=None if level <= 0 else 'on_black',
+                                    attrs=['bold', 'dark'] if level <= 0 else ['bold'])
     header_blanks = '\n' if level != 1 else '\n\n'
 
-    print(f"{header_blanks}{header_start}{header_text}{header_end}")
+    print(f"{header_blanks}{header_text}")
 
 
 def eyeball_basic_ca(rule_number: int, initial_conditions: str, base: int,

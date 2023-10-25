@@ -5,22 +5,20 @@ on:
   push:
     branches: [master, main, dev]
 
-#env:
-#  FORCE_COLOR: 1
-
 jobs:
 
   test:
 
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest, macos-13]
         python-version:  ["3.10", "3.11", "3.12"]
-#        include:
-#          - os: macos-latest
-#            python-version: "3.13"
+        include:
+          - os: macos-13
+            python-version: "3.13.0-alpha.1"
 
     steps:
       - name: Checkout repo

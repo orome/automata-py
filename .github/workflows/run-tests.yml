@@ -5,8 +5,8 @@ on:
   push:
     branches: [master, main, dev]
 
-env:
-  FORCE_COLOR: 1
+#env:
+#  FORCE_COLOR: 1
 
 jobs:
 

@@ -19,7 +19,8 @@ def print_header(level, label='', mark=None) -> None:
     header_text = termcolor.colored(f"{rule} {label} {rule[::-1]}"[:HEADER_LENGTH],
                                     color='green' if level <= 0 else 'dark_grey',
                                     on_color=None if level <= 0 else 'on_black',
-                                    attrs=['bold', 'dark'] if level <= 0 else ['bold'])
+                                    attrs=['bold', 'dark'] if level <= 0 else ['bold'],
+                                    force_color=True)
     header_blanks = '\n' if level != 1 else '\n\n'
 
     print(f"{header_blanks}{header_text}")

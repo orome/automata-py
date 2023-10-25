@@ -41,7 +41,7 @@ jobs:
         run: python -c "import automata; print(automata.__version__)"
 
       # Skip for Windows; path setting there isn't worth the trouble
-      - name: Run eyeball tests
+      - name: Run eyeball checks
         if: runner.os != 'Windows'
         run: |
           pip install termcolor

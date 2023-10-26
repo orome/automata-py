@@ -40,3 +40,47 @@ def test_automaton() -> None:
                     {
                         4: '000000000000000000000000000000000110010001000000000000000000000000000000000000000',
                         20: '000000000000000001100100011100111100000111101110110001000100000000000000000000000'})
+
+
+def test_rule_encode_decode() -> None:
+    """
+    Tests the encoding and decoding functionality of the Rule class.
+    """
+    assert Rule._encode(30, base=2, length=8) == '00011110'
+    assert Rule._encode(5, base=2, length=4) == '0101'
+    assert Rule._decode('00011110', base=2) == 30
+    assert Rule._decode('0101', base=2) == 5
+
+
+def test_pattern_to_output() -> None:
+    """
+    Tests the pattern to output mapping for a given rule.
+    """
+    rule_30 = Rule(30, base=2)
+    assert rule_30.pattern_to_output['111'] == '0'
+    assert rule_30.pattern_to_output['110'] == '0'
+    assert rule_30.pattern_to_output['101'] == '0'
+    assert rule_30.pattern_to_output['011'] == '1'
+
+
+def test_automaton_repr() -> None:
+    """
+    Tests the repr of the CellularAutomata.
+    """
+    ca = CellularAutomata(30, '1000000')
+    assert repr(ca) == '\n'.join([''.join(row) for row in ca._lattice])
+
+
+def test_automaton_dict_representation() -> None:
+    """
+    Tests the dictionary representation of the CellularAutomata.
+    """
+    ca = CellularAutomata(30, '1000000')
+    ca_dict = ca.to_dict()
+    assert 'args' in ca_dict
+    assert ca_dict['args']['rule_number'] == 30
+    assert ca_dict['args']['base'] == 2
+    assert ca_dict['args']['frame_width'] == 101
+    assert ca_dict['args']['frame_steps'] == 200
+    assert ca_dict['args']['boundary_condition'] == 'zero'
+    assert ca_dict['args']['initial_conditions'] == '1000000'

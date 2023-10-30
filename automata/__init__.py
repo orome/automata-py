@@ -1,15 +1,14 @@
-#!/usr/bin/env python
-# encoding: utf8
-
 """
-Description
+A brief description of the automata package.
+
+A longer description of the automata package.
 
 .. note::
     Any additional note.
 """
 
 # See - http://www.python.org/dev/peps/pep-0440/
-__author__ = 'Roy Levien'
+# __author__ = 'Roy Levien'
 __release__ = '0.1'  # N(.N)*
 __pre_release__ = 'a2'  # aN | bN | cN |
 __suffix__ = '.dev001'  # .devN | | .postN

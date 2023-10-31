@@ -2,9 +2,6 @@
 A brief description of the automata package.
 
 A longer description of the automata package.
-
-.. note::
-    Any additional note.
 """
 
 # See - http://www.python.org/dev/peps/pep-0440/

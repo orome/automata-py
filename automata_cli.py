@@ -3,17 +3,16 @@
 
 """
 A simple CLI for the automata package.
-
-.. note::
-    Any additional note.
 """
 
 import click
 from automata.core import CellularAutomata
 
+
 @click.group()
 def cli():
     pass
+
 
 @cli.command()
 @click.option('--rule', type=int, required=True)
@@ -26,6 +25,8 @@ def generate(rule, initial_conditions, base, frame_width, frame_steps, boundary_
     global automaton
     automaton = CellularAutomata(rule, initial_conditions, base, frame_width, frame_steps, boundary_condition)
 
+
+# noinspection PyProtectedMember
 @cli.command()
 @click.option('--output_format', type=click.Choice(['png', 'jpg', 'svg']), default='png')
 def display(output_format):
@@ -35,6 +36,7 @@ def display(output_format):
         print(automaton._repr_jpeg_())
     elif output_format == 'svg':
         print(automaton._repr_svg_())
+
 
 if __name__ == '__main__':
     cli()

@@ -21,6 +21,12 @@ dependencies = [
     "matplotlib >=3.8"
 ]
 
+[tool.flit.module]
+name = "automata"
+
+[tool.flit.sdist]
+include = ["automata_cli.py"]
+
 [project.urls]
 Home = "https://github.com/orome/automata-py"
 
@@ -29,5 +35,5 @@ notebook = ["ipywidgets", "IPython"]
 cli = ["click"]
 all = ["ipywidgets", "IPython", "click"]
 
-#[tool.flit.scripts]
-#_cli-click = "_cli_click.py"
+[project.scripts]
+automata = "automata_cli.py"

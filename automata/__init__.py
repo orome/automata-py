@@ -8,7 +8,7 @@ A longer description of the automata package.
 # __author__ = 'Roy Levien'
 __release__ = '0.1'  # N(.N)*
 __pre_release__ = 'a3'  # aN | bN | cN |
-__suffix__ = '.dev001'  # .devN | | .postN
+__suffix__ = '.dev008'  # .devN | | .postN
 __version__ = __release__ + __pre_release__ + __suffix__
 
 from .core import *

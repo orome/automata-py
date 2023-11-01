@@ -23,9 +23,13 @@ dependencies = [
 
 [tool.flit.module]
 name = "automata"
-
-[tool.flit.sdist]
 include = ["automata_cli.py"]
+
+[project.scripts]
+automata = "automata_cli:cli"
+
+#[tool.flit.sdist]
+#include = ["docs/readme_eg.png"]
 
 [project.urls]
 Home = "https://github.com/orome/automata-py"
@@ -34,6 +38,3 @@ Home = "https://github.com/orome/automata-py"
 notebook = ["ipywidgets", "IPython"]
 cli = ["click"]
 all = ["ipywidgets", "IPython", "click"]
-
-[project.scripts]
-automata = "automata_cli.py"

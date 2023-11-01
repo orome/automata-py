@@ -6,7 +6,7 @@ A simple CLI for the automata package.
 """
 
 import click
-from automata.core import CellularAutomata
+from .core import CellularAutomata
 
 
 @click.group()

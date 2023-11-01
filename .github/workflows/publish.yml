@@ -11,14 +11,14 @@ on:
 jobs:
 
   build-and-publish:
-    permissions:
-      # USE: this permission is mandatory for trusted publishing
-      id-token: write
 
     name: Build and Publish
     environment: deployment
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.name == 'Run Tests'
     runs-on: ubuntu-latest
+    permissions:
+      # USE: this permission is mandatory for trusted publishing
+      id-token: write
 
     steps:
     - name: Checkout repo
@@ -46,4 +46,4 @@ jobs:
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        repository-url: https://test.pypi.org/legacy/
+        repository-url: https://test.pypi.org/legacy/  # TBD - Base on branch

@@ -15,7 +15,7 @@ __release__ = '0.1'  # N(.N)*
 # USE - To indicate status of release, can be on any branch
 __pre_release__ = 'a3'  # aN | bN | rcN
 # USE - For all commits on develop branch, never on main branch, increment after each commit (that publishes)
-__suffix__ = '.dev15'  # .devN |  (.postN)
+__suffix__ = '.dev16'  # .devN |  (.postN)
 __version__ = __release__ + __pre_release__ + __suffix__
 
 from .core import *

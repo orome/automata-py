@@ -1,0 +1,149 @@
+name: Test & Deploy
+
+on:
+  push:
+  pull_request:
+
+
+jobs:
+
+  test:
+
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest] #, macos-latest, windows-latest, macos-13]
+        python-version:  ["3.12"]  # "3.10", "3.11",
+#        include:
+#          - os: macos-13
+#            python-version: "3.13.0-alpha.1"
+
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Display Python version (${{ matrix.python-version }})
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Display package version
+        run: python -c "import automata; print(automata.__version__)"
+
+      # Skip for Windows; path setting there isn't worth the trouble
+      - name: Run eyeball checks
+        if: runner.os != 'Windows'
+        run: |
+          pip install termcolor
+          PYTHONPATH=. python tests/eyeball.py
+
+      - name: Test with pytest
+        run: |
+          pip install pytest
+          pytest tests/ --maxfail=3 --showlocals --color=yes -v
+
+  publish:
+
+    name: Build and Publish
+    needs: test
+    runs-on: ubuntu-latest
+    environment: deployment
+#    if: ${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || contains(fromJson('["master", "main", "develop"]'), github.ref_name)) }}
+    if: >-
+      github.event_name == 'push' &&
+      github.actor == 'orome' &&
+      (
+        startsWith(github.ref, 'refs/tags/v') ||
+        contains(fromJson('["master", "main", "develop"]'), github.ref_name)
+      )
+    permissions:
+      # USE: this permission is mandatory for trusted publishing
+      id-token: write
+
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Set up Python (3.12)
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Get package version
+      id: package_version
+      run: |
+        PACKAGE_VERSION=$(python -c "from automata import __version__; print(__version__)")
+        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Determine PyPI repository URL
+      id: pypi_repository
+      run: |
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+        VERSION_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
+        PACKAGE_VERSION=${{ steps.package_version.outputs.PACKAGE_VERSION }}
+        
+        echo "GITHUB_REF: $GITHUB_REF"
+        echo "TAG_NAME: $TAG_NAME"
+        echo "PACKAGE_VERSION $PACKAGE_VERSION"
+        
+        if [[ "${TAG_NAME}" =~ ${VERSION_REGEX} ]]; then
+          echo "Tag matches version regex: T"
+        else
+          echo "Tag matches version regex: F"
+        fi       
+        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} ]]; then
+          echo "Package version matches version regex: T"
+        else
+          echo "Package version matches version regex: F"
+        fi     
+        if [[ "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
+          echo "Tag matches the package version: T"
+        else
+          echo "Tag matches the package version: F"
+        fi
+        
+        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} && "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
+          echo "Will publish to production PyPI..."
+          echo "REPOSITORY_LEVEL=Production" >> $GITHUB_OUTPUT
+          echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
+        else
+          echo "Will publish to test PyPI..."
+          echo "REPOSITORY_LEVEL=Test" >> $GITHUB_OUTPUT
+          echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
+        fi
+
+#    - name: Publish to PyPI (${{ steps.pypi_repository.outputs.REPOSITORY_LEVEL }})
+#      run: |
+#        echo "Publish URL ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}"
+#        echo "Version ${{ steps.package_version.outputs.PACKAGE_VERSION }}"
+
+    - name: Install Flit
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install flit
+        flit --version
+
+    - name: Build the package
+      run: flit build --no-use-vcs
+
+    - name: Publish to PyPI (${{ steps.pypi_repository.outputs.REPOSITORY_LEVEL }})
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}

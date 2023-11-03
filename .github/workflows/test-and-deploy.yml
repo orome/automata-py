@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+defaults:
+  run:
+    shell: bash
 
 jobs:
 
@@ -11,14 +14,16 @@ jobs:
 
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    outputs:
+      PACKAGE_VERSION: ${{ steps.get_version.outputs.PACKAGE_VERSION }}
     continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest, macos-13]
-        python-version:  ["3.12", "3.10", "3.11"]
-        include:
-          - os: macos-13
-            python-version: "3.13.0-alpha.1"
+        os: [ubuntu-latest] #, macos-latest, windows-latest, macos-13]
+        python-version:  ["3.12"] #, "3.10", "3.11"]
+#        include:
+#          - os: macos-13
+#            python-version: "3.13.0-alpha.1"
 
     steps:
 
@@ -39,7 +44,10 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Display package version
-        run: python -c "import automata; print(automata.__version__)"
+        id: get_version
+        run: |
+          python -c "import automata; print(automata.__version__)"
+          echo "PACKAGE_VERSION=$(python -c 'import automata; print(automata.__version__)')" >> $GITHUB_OUTPUT
 
       # Skip for Windows; path setting there isn't worth the trouble
       - name: Run eyeball checks
@@ -53,24 +61,79 @@ jobs:
           pip install pytest
           pytest tests/ --maxfail=3 --showlocals --color=yes -v
 
+  validate_tag:
+    name: Validate Tag
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      TAG_VALID: ${{ steps.validate.outputs.TAG_VALID }}
+      TAG_IS_DEV: ${{ steps.validate.outputs.TAG_IS_DEV }}
+      TAG_VERSION_MATCH: ${{ steps.validate.outputs.TAG_VERSION_MATCH }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Validate version tag
+        id: validate
+        run: |
+          TAG_REGEX='^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))(([ab]|rc)[0-9]+)?(\.(dev|post)[0-9]+)?$'
+          DEV_TAG_REGEX='\.(dev|post)[0-9]+$'
+          #  TAG_REGEX='^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d+))?((?:[ab]|rc)(0|[1-9]\d*))?(?:\.(?:dev|post)(0|[1-9]\d*))?$'
+          #  DEV_TAG_REGEX='\.(dev|post)(0|[1-9]\d*)$'
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          PACKAGE_VERSION=${{ needs.test.outputs.PACKAGE_VERSION }}
+
+          # Check if the tag name matches the version pattern
+          if [[ "${TAG_NAME}" =~ ${TAG_REGEX} ]]; then TAG_VALID="true"; else TAG_VALID="false"; fi
+          echo "TAG_VALID=$TAG_VALID" >> $GITHUB_OUTPUT  
+          if [[ $TAG_VALID == "true" ]]; then
+            echo "Valid version tag: $TAG_NAME"
+          else
+            echo "Invalid (remember the v) or missing version tag: $TAG_NAME"
+          fi
+          
+          # Check if the tag name matches the dev version pattern
+          if [[ "${TAG_NAME}" =~ ${DEV_TAG_REGEX} ]]; then TAG_IS_DEV="true"; else TAG_IS_DEV="false"; fi
+          echo "TAG_IS_DEV=$TAG_IS_DEV" >> $GITHUB_OUTPUT
+          if [[ $TAG_IS_DEV == "true" ]]; then
+            echo "Development version tag: $TAG_NAME"
+          else
+            echo "Release or invalid (remember the v) version tag: $TAG_NAME"
+          fi
+          
+          if [[ ${TAG_NAME#v} == $PACKAGE_VERSION ]]; then TAG_VERSION_MATCH="true"; else TAG_VERSION_MATCH="false"; fi
+          echo "TAG_VERSION_MATCH=$TAG_VERSION_MATCH" >> $GITHUB_OUTPUT          
+          if [[ $TAG_VERSION_MATCH == "true" ]]; then
+            echo "Version in tag matches package version: $PACKAGE_VERSION"
+          else
+            echo "Version in tag does not match package version: $PACKAGE_VERSION"
+          fi
+        shell: bash
+
   publish:
 
     name: Build and Publish
-    needs: test
+    needs: validate_tag
     runs-on: ubuntu-latest
     environment: deployment
+#    if: needs.validate_tag.outputs.TAG_VALID == 'true'
     if: >-
-      github.event_name == 'push' &&
-      github.actor == 'orome' &&
-      (
-        startsWith(github.ref, 'refs/tags/v') ||
-        contains(fromJson('["master", "main", "develop"]'), github.ref_name)
-      )
+      needs.validate_tag.outputs.TAG_VALID== 'true'  &&
+      needs.validate_tag.outputs.TAG_VERSION_MATCH == 'true' &&
+      github.event_name == 'push'
     permissions:
-      # USE: this permission is mandatory for trusted publishing
-      id-token: write
+      id-token: write  # Mandatory for trusted publishing
 
     steps:
+
+    - name: DEBUG Check inputs
+      run: |
+        TEST_TAG_VALID=${{ needs.validate_tag.outputs.TAG_VALID }}
+        TEST_TAG_VERSION_MATCH=${{ needs.validate_tag.outputs.TAG_VERSION_MATCH }}
+        TAG_IS_DEV=${{ needs.validate_tag.outputs.TAG_IS_DEV }}
+        echo "TEST_TAG_VALID: $TEST_TAG_VALID"
+        echo "TEST_TAG_VERSION_MATCH: $TEST_TAG_VERSION_MATCH"
+        echo "TAG_IS_DEV: $TAG_IS_DEV"
 
     - name: Checkout repo
       uses: actions/checkout@v4
@@ -85,59 +148,132 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Get package version
-      id: package_version
-      run: |
-        PACKAGE_VERSION=$(python -c "from automata import __version__; print(__version__)")
-        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
-
     - name: Determine PyPI repository URL
       id: pypi_repository
-      run: |
-        TAG_NAME=${GITHUB_REF#refs/tags/}
-        VERSION_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
-        PACKAGE_VERSION=${{ steps.package_version.outputs.PACKAGE_VERSION }}
-        
-        echo "GITHUB_REF: $GITHUB_REF"
-        echo "TAG_NAME: $TAG_NAME"
-        echo "PACKAGE_VERSION $PACKAGE_VERSION"
-        
-        if [[ "${TAG_NAME}" =~ ${VERSION_REGEX} ]]; then
-          echo "Tag matches version regex: T"
-        else
-          echo "Tag matches version regex: F"
-        fi       
-        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} ]]; then
-          echo "Package version matches version regex: T"
-        else
-          echo "Package version matches version regex: F"
-        fi     
-        if [[ "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
-          echo "Tag matches the package version: T"
-        else
-          echo "Tag matches the package version: F"
-        fi
-        
-        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} && "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
-          echo "Will publish to production PyPI..."
-          echo "REPOSITORY_LEVEL=Production" >> $GITHUB_OUTPUT
-          echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
-        else
+      run: |   
+        TAG_IS_DEV=${{ needs.validate_tag.outputs.TAG_IS_DEV }}
+        if [[ "${TAG_IS_DEV}" == 'true' ]]; then
           echo "Will publish to test PyPI..."
           echo "REPOSITORY_LEVEL=Test" >> $GITHUB_OUTPUT
           echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
+        else
+          echo "Will publish to production PyPI..."
+          echo "REPOSITORY_LEVEL=Production" >> $GITHUB_OUTPUT
+          echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
         fi
 
-    - name: Install Flit
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install flit
-        flit --version
+#    - name: Install Flit
+#      run: |
+#        python -m pip install --upgrade pip
+#        python -m pip install flit
+#        flit --version
+#
+#    - name: Build the package
+#      run: flit build --no-use-vcs
+#
+#    - name: Publish to PyPI (${{ steps.pypi_repository.outputs.REPOSITORY_LEVEL }})
+#      uses: pypa/gh-action-pypi-publish@release/v1
+#      with:
+#        repository-url: ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}
 
-    - name: Build the package
-      run: flit build --no-use-vcs
 
-    - name: Publish to PyPI (${{ steps.pypi_repository.outputs.REPOSITORY_LEVEL }})
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# [[ $TAG_NAME =~ $DEV_TAG_REGEX ]] && TAG_IS_DEV="true" || TAG_IS_DEV="false"
+
+
+#    - name: Get package version
+#      id: package_version
+#      run: |
+#        PACKAGE_VERSION=$(python -c "from automata import __version__; print(__version__)")
+#        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+
+#    - name: Determine PyPI repository URL
+#      id: pypi_repository
+#      run: |
+#        TAG_NAME=${GITHUB_REF#refs/tags/}
+#        VERSION_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
+#        PACKAGE_VERSION=${{ steps.package_version.outputs.PACKAGE_VERSION }}
+#
+#        echo "GITHUB_REF: $GITHUB_REF"
+#        echo "TAG_NAME: $TAG_NAME"
+#        echo "PACKAGE_VERSION $PACKAGE_VERSION"
+#
+#        if [[ "${TAG_NAME}" =~ ${VERSION_REGEX} ]]; then
+#          echo "Tag matches version regex: T"
+#        else
+#          echo "Tag matches version regex: F"
+#        fi
+#        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} ]]; then
+#          echo "Package version matches version regex: T"
+#        else
+#          echo "Package version matches version regex: F"
+#        fi
+#        if [[ "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
+#          echo "Tag matches the package version: T"
+#        else
+#          echo "Tag matches the package version: F"
+#        fi
+#
+#        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} && "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
+#          echo "Will publish to production PyPI..."
+#          echo "REPOSITORY_LEVEL=Production" >> $GITHUB_OUTPUT
+#          echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
+#        else
+#          echo "Will publish to test PyPI..."
+#          echo "REPOSITORY_LEVEL=Test" >> $GITHUB_OUTPUT
+#          echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
+#        fi
+
+
+#    - name: Notify - Completion
+#      uses: tsickert/discord-webhook@v5.3.0
+#      with:
+#        webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
+#        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - ended\n<@${{ secrets.DISCORD_USER_ID }}>"
+
+
+#    - name: Notify - Start
+#      uses: tsickert/discord-webhook@v5.3.0
+#      with:
+#        webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
+#        content: "[${{ github.repository }}] (${{ github.actor }}) ${{ github.workflow }} - started"
+
+#    if: >-
+#      github.event_name == 'push' &&
+#      github.actor == 'orome' &&
+#      (
+#        startsWith(github.ref, 'refs/tags/v') ||
+#        contains(fromJson('["master", "main", "develop"]'), github.ref_name)
+#      )
+
+
+
+#          TAG_REGEX='^v(\d+\.\d+(?:\.\d+)?)([ab]|rc)?\d*(\.dev|\.post)?\d*$'
+#          TAG_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
+#          if [[ $TAG_NAME =~ $TAG_REGEX ]]; then
+#            echo "Valid version tag: $TAG_NAME"
+#            echo "TAG_VALID=true" >> $GITHUB_OUTPUT
+#          else
+#            echo "Invalid version tag: $TAG_NAME"
+#            echo "TAG_VALID=false" >> $GITHUB_OUTPUT
+#          fi

@@ -76,10 +76,9 @@ jobs:
       - name: Validate version tag
         id: validate
         run: |
-          TAG_REGEX='^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))(([ab]|rc)[0-9]+)?(\.(dev|post)[0-9]+)?$'
-          DEV_TAG_REGEX='\.(dev|post)[0-9]+$'
-          #  TAG_REGEX='^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d+))?((?:[ab]|rc)(0|[1-9]\d*))?(?:\.(?:dev|post)(0|[1-9]\d*))?$'
-          #  DEV_TAG_REGEX='\.(dev|post)(0|[1-9]\d*)$'
+          # regexr.com/7mmq7
+          TAG_REGEX='^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)[1-9][0-9]+)?(\.(dev|post)[1-9][0-9]*)?$'
+          DEV_TAG_REGEX='\.(dev|post)[1-9][0-9]*$'
           TAG_NAME=${GITHUB_REF#refs/tags/}
           PACKAGE_VERSION=${{ needs.test.outputs.PACKAGE_VERSION }}
 
@@ -196,7 +195,8 @@ jobs:
 
 
 
-
+          #  TAG_REGEX='^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d+))?((?:[ab]|rc)(0|[1-9]\d*))?(?:\.(?:dev|post)(0|[1-9]\d*))?$'
+          #  DEV_TAG_REGEX='\.(dev|post)(0|[1-9]\d*)$'
 
 # [[ $TAG_NAME =~ $DEV_TAG_REGEX ]] && TAG_IS_DEV="true" || TAG_IS_DEV="false"
 

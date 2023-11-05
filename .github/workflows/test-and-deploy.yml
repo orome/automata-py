@@ -59,7 +59,6 @@ jobs:
           pip install pytest
           pytest tests/ --maxfail=3 --showlocals --color=yes -v
 
-
   validate_version:
     name: Validate Package Version
     runs-on: ubuntu-latest
@@ -237,75 +236,6 @@ jobs:
         repository-url: ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          #  VERSION_TAG_REGEX='^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d+))?((?:[ab]|rc)(0|[1-9]\d*))?(?:\.(?:dev|post)(0|[1-9]\d*))?$'
-          #  DEV_TAG_REGEX='\.(dev|post)(0|[1-9]\d*)$'
-
-# [[ $TAG_NAME =~ $DEV_TAG_REGEX ]] && TAG_IS_DEV="true" || TAG_IS_DEV="false"
-
-
-#    - name: Get package version
-#      id: package_version
-#      run: |
-#        PACKAGE_VERSION=$(python -c "from automata import __version__; print(__version__)")
-#        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
-
-#    - name: Determine PyPI repository URL
-#      id: pypi_repository
-#      run: |
-#        TAG_NAME=${GITHUB_REF#refs/tags/}
-#        VERSION_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
-#        PACKAGE_VERSION=${{ steps.package_version.outputs.PACKAGE_VERSION }}
-#
-#        echo "GITHUB_REF: $GITHUB_REF"
-#        echo "TAG_NAME: $TAG_NAME"
-#        echo "PACKAGE_VERSION $PACKAGE_VERSION"
-#
-#        if [[ "${TAG_NAME}" =~ ${VERSION_REGEX} ]]; then
-#          echo "Tag matches version regex: T"
-#        else
-#          echo "Tag matches version regex: F"
-#        fi
-#        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} ]]; then
-#          echo "Package version matches version regex: T"
-#        else
-#          echo "Package version matches version regex: F"
-#        fi
-#        if [[ "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
-#          echo "Tag matches the package version: T"
-#        else
-#          echo "Tag matches the package version: F"
-#        fi
-#
-#        if [[ "v${PACKAGE_VERSION}" =~ ${VERSION_REGEX} && "v${PACKAGE_VERSION}" == "${TAG_NAME}" ]]; then
-#          echo "Will publish to production PyPI..."
-#          echo "REPOSITORY_LEVEL=Production" >> $GITHUB_OUTPUT
-#          echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
-#        else
-#          echo "Will publish to test PyPI..."
-#          echo "REPOSITORY_LEVEL=Test" >> $GITHUB_OUTPUT
-#          echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
-#        fi
-
-
 #    - name: Notify - Completion
 #      uses: tsickert/discord-webhook@v5.3.0
 #      with:
@@ -318,23 +248,3 @@ jobs:
 #      with:
 #        webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
 #        content: "[${{ github.repository }}] (${{ github.actor }}) ${{ github.workflow }} - started"
-
-#    if: >-
-#      github.event_name == 'push' &&
-#      github.actor == 'orome' &&
-#      (
-#        startsWith(github.ref, 'refs/tags/v') ||
-#        contains(fromJson('["master", "main", "develop"]'), github.ref_name)
-#      )
-
-
-
-#          VERSION_TAG_REGEX='^v(\d+\.\d+(?:\.\d+)?)([ab]|rc)?\d*(\.dev|\.post)?\d*$'
-#          VERSION_TAG_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
-#          if [[ $TAG_NAME =~ $TAG_REGEX ]]; then
-#            echo "Valid version tag: $TAG_NAME"
-#            echo "TAG_VALID=true" >> $GITHUB_OUTPUT
-#          else
-#            echo "Invalid version tag: $TAG_NAME"
-#            echo "TAG_VALID=false" >> $GITHUB_OUTPUT
-#          fi

@@ -8,6 +8,11 @@ defaults:
   run:
     shell: bash
 
+env:
+  # regexr.com/7mmq7
+  TAG_REGEX: '^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)(0|[1-9][0-9]*))?(\.(dev|post)(0|[1-9][0-9]*))?$'
+  DEV_TAG_REGEX: '\.(dev|post)(0|[1-9][0-9]*)$'
+
 jobs:
 
   test:
@@ -78,9 +83,8 @@ jobs:
         id: validate
         run: |
 
-          # regexr.com/7mmq7
-          TAG_REGEX='^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)[1-9][0-9]+)?(\.(dev|post)[1-9][0-9]*)?$'
-          DEV_TAG_REGEX='\.(dev|post)[1-9][0-9]*$'
+          TAG_REGEX="${{ env.TAG_REGEX }}"
+          DEV_TAG_REGEX="${{ env.DEV_TAG_REGEX }}"
           TAG_NAME=${GITHUB_REF#refs/tags/}
           PACKAGE_VERSION=${{ needs.test.outputs.PACKAGE_VERSION }}
 

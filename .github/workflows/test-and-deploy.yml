@@ -10,8 +10,9 @@ defaults:
 
 env:
   # regexr.com/7mmq7
-  TAG_REGEX: '^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)(0|[1-9][0-9]*))?(\.(dev|post)(0|[1-9][0-9]*))?$'
+  VERSION_TAG_REGEX: '^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)(0|[1-9][0-9]*))?(\.(dev|post)(0|[1-9][0-9]*))?$'
   DEV_TAG_REGEX: '\.(dev|post)(0|[1-9][0-9]*)$'
+  TOOL_PYTHON_VERSION: 3.12
 
 jobs:
 
@@ -19,8 +20,6 @@ jobs:
 
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    outputs:
-      PACKAGE_VERSION: ${{ steps.get_version.outputs.PACKAGE_VERSION }}
     continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
     strategy:
       matrix:
@@ -48,12 +47,6 @@ jobs:
       - name: Display Python version (${{ matrix.python-version }})
         run: python -c "import sys; print(sys.version)"
 
-      - name: Display package version
-        id: get_version
-        run: |
-          python -c "import automata; print(automata.__version__)"
-          echo "PACKAGE_VERSION=$(python -c 'import automata; print(automata.__version__)')" >> $GITHUB_OUTPUT
-
       # Skip for Windows; path setting there isn't worth the trouble
       - name: Run eyeball checks
         if: runner.os != 'Windows'
@@ -66,71 +59,122 @@ jobs:
           pip install pytest
           pytest tests/ --maxfail=3 --showlocals --color=yes -v
 
-  validate_tag:
-    name: Validate Tag
+
+  validate_version:
+    name: Validate Package Version
     runs-on: ubuntu-latest
     needs: test
     outputs:
-      IS_TAG: ${{ steps.validate.outputs.IS_TAG }}
-      TAG_VALID: ${{ steps.validate.outputs.TAG_VALID }}
-      TAG_IS_DEV: ${{ steps.validate.outputs.TAG_IS_DEV }}
-      TAG_VERSION_MATCH: ${{ steps.validate.outputs.TAG_VERSION_MATCH }}
+      PACKAGE_VERSION: ${{ steps.get_version.outputs.PACKAGE_VERSION }}
+      PACKAGE_VALID: ${{ steps.get_version.outputs.PACKAGE_VALID }}
+
     steps:
+
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Validate version tag
-        id: validate
+      - name: Set up Python (${{ env.TOOL_PYTHON_VERSION }})
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.TOOL_PYTHON_VERSION }}
+
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-          TAG_REGEX="${{ env.TAG_REGEX }}"
-          DEV_TAG_REGEX="${{ env.DEV_TAG_REGEX }}"
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          PACKAGE_VERSION=${{ needs.test.outputs.PACKAGE_VERSION }}
-
-          if [[ "${TAG_NAME}" =~ "refs/tags/" ]]; then IS_TAG="true"; else IS_TAG="false"; fi
-          echo "IS_TAG=IS_TAG" >> $GITHUB_OUTPUT  
-          if [[ TAG_NAME == "true" ]]; then
-            echo "Tag: $TAG_NAME"
+      - name: Validate package version
+        id: get_version
+        run: |
+          # Get the package version and confirm it is valid
+          
+          PACKAGE_VERSION=$(python -c 'import automata; print(automata.__version__)')
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT          
+          
+          # Check if the tag name matches the version pattern
+          if [[ v"${PACKAGE_VERSION}" =~ ${VERSION_TAG_REGEX} ]]; then PACKAGE_VALID="true"; else PACKAGE_VALID="false"; fi
+          echo "PACKAGE_VALID=$PACKAGE_VALID" >> $GITHUB_OUTPUT  
+          if [[ $PACKAGE_VALID == "true" ]]; then
+            echo "Valid package version: $PACKAGE_VERSION"
           else
-            echo "Not a tag: $TAG_NAME"
+            echo "Invalid package version: $PACKAGE_VERSION"
+            # exit 1  # Tests fail if the package version is invalid
           fi
 
-          # Check if the tag name matches the version pattern
-          if [[ "${TAG_NAME}" =~ ${TAG_REGEX} ]]; then TAG_VALID="true"; else TAG_VALID="false"; fi
-          echo "TAG_VALID=$TAG_VALID" >> $GITHUB_OUTPUT  
-          if [[ $TAG_VALID == "true" ]]; then
+  validate_tag:
+    name: Validate Tag
+    runs-on: ubuntu-latest
+    needs: validate_version
+    if: >-
+      needs.validate_version.outputs.PACKAGE_VALID == 'true'
+    outputs:
+      IS_TAG: ${{ steps.validate.outputs.IS_TAG }}
+      TAG_VALID: ${{ steps.validate.outputs.TAG_VALID }}
+      TAG_IS_RELEASE: ${{ steps.validate.outputs.TAG_IS_RELEASE }}
+      TAG_VERSION_MATCH: ${{ steps.validate.outputs.TAG_VERSION_MATCH }}
+
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Validate version tag
+      id: validate
+      run: |
+        # Validate the version tag and determine whether it matches the package version
+        
+        VERSION_TAG_REGEX="${{ env.VERSION_TAG_REGEX }}"
+        DEV_TAG_REGEX="${{ env.DEV_TAG_REGEX }}"
+        PACKAGE_VERSION=${{ needs.validate_version.outputs.PACKAGE_VERSION }}
+
+        # Check if the this is a tagged commit and save the tag or ref name
+        if [[ "${GITHUB_REF}" =~ "refs/tags/" ]]; then IS_TAG="true"; else IS_TAG="false"; fi
+        echo "IS_TAG=$IS_TAG" >> $GITHUB_OUTPUT  
+        if [[ ${IS_TAG} == "true" ]]; then TAG_NAME=${GITHUB_REF#refs/tags/}; else TAG_NAME=${GITHUB_REF}; fi
+
+        # Check if the tag name matches the version pattern
+        if [[ "${TAG_NAME}" =~ ${VERSION_TAG_REGEX} ]]; then TAG_VALID="${IS_TAG}"; else TAG_VALID="false"; fi
+        echo "TAG_VALID=$TAG_VALID" >> $GITHUB_OUTPUT  
+
+        # Check if the tag name matches the dev version pattern
+        if [[ !("${TAG_NAME}" =~ ${DEV_TAG_REGEX}) ]]; then TAG_IS_RELEASE="${TAG_VALID}"; else TAG_IS_RELEASE="false"; fi
+        echo "TAG_IS_RELEASE=$TAG_IS_RELEASE" >> $GITHUB_OUTPUT
+
+        # Check if the tag and package versions match
+        if [[ ${TAG_NAME#v} == $PACKAGE_VERSION ]]; then TAG_VERSION_MATCH="${TAG_VALID}"; else TAG_VERSION_MATCH="false"; fi
+        echo "TAG_VERSION_MATCH=$TAG_VERSION_MATCH" >> $GITHUB_OUTPUT  
+
+        # Report tag validation results
+        if [[ ${IS_TAG} == "true" ]]; then
+          echo "Tag: $TAG_NAME"
+          if [[ ${TAG_VALID} == "true" ]]; then
             echo "Valid version tag"
+             if [[ ${TAG_IS_RELEASE} == "true" ]]; then
+              echo "Release version tag"
+            else
+              echo "Development version tag"
+            fi                 
+            if [[ ${TAG_VERSION_MATCH} == "true" ]]; then
+              echo "Version in tag matches package version: $PACKAGE_VERSION = ${TAG_NAME#v}"
+            else
+              echo "Version in tag does not match package version: $PACKAGE_VERSION != ${TAG_NAME#v}"
+            fi
           else
             echo "Invalid (remember the v) or missing version tag"
           fi
-          
-          # Check if the tag name matches the dev version pattern
-          if [[ "${TAG_NAME}" =~ ${DEV_TAG_REGEX} ]]; then TAG_IS_DEV="true"; else TAG_IS_DEV="false"; fi
-          echo "TAG_IS_DEV=$TAG_IS_DEV" >> $GITHUB_OUTPUT
-          if [[ $TAG_IS_DEV == "true" ]]; then
-            echo "Development version tag"
-          else
-            echo "Release or invalid (remember the v) version tag"
-          fi
-          
-          if [[ ${TAG_NAME#v} == $PACKAGE_VERSION ]]; then TAG_VERSION_MATCH="true"; else TAG_VERSION_MATCH="false"; fi
-          echo "TAG_VERSION_MATCH=$TAG_VERSION_MATCH" >> $GITHUB_OUTPUT          
-          if [[ $TAG_VERSION_MATCH == "true" ]]; then
-            echo "Version in tag matches package version: $PACKAGE_VERSION != ${TAG_NAME#v}"
-          else
-            echo "Version in tag does not match package version: $PACKAGE_VERSION != ${TAG_NAME#v}"
-          fi
-        shell: bash
+        else
+          echo "Not a tag: $TAG_NAME"
+        fi
 
   publish:
 
     name: Build and Publish
-    needs: validate_tag
+    needs: [validate_tag, validate_version]
     runs-on: ubuntu-latest
     environment: deployment
-#    if: needs.validate_tag.outputs.TAG_VALID == 'true'
+    # Includes redundant check for PACKAGE_VALID
     if: >-
+      needs.validate_version.outputs.PACKAGE_VALID == 'true' &&  
       needs.validate_tag.outputs.IS_TAG == 'true'  &&
       needs.validate_tag.outputs.TAG_VALID == 'true'  &&
       needs.validate_tag.outputs.TAG_VERSION_MATCH == 'true' &&
@@ -145,19 +189,19 @@ jobs:
         IS_TAG=${{ needs.validate_tag.outputs.IS_TAG }}
         TEST_TAG_VALID=${{ needs.validate_tag.outputs.TAG_VALID }}
         TEST_TAG_VERSION_MATCH=${{ needs.validate_tag.outputs.TAG_VERSION_MATCH }}
-        TAG_IS_DEV=${{ needs.validate_tag.outputs.TAG_IS_DEV }}
+        TAG_IS_RELEASE=${{ needs.validate_tag.outputs.TAG_IS_RELEASE }}
         echo "IS_TAG: IS_TAG"
         echo "TEST_TAG_VALID: $TEST_TAG_VALID"
         echo "TEST_TAG_VERSION_MATCH: $TEST_TAG_VERSION_MATCH"
-        echo "TAG_IS_DEV: $TAG_IS_DEV"
+        echo "TAG_IS_RELEASE: $TAG_IS_RELEASE"
 
     - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Set up Python (3.12)
+    - name: Set up Python (${{ env.TOOL_PYTHON_VERSION }})
       uses: actions/setup-python@v4
       with:
-        python-version: 3.12
+        python-version: ${{ env.TOOL_PYTHON_VERSION }}
 
     - name: Install dependencies
       run: |
@@ -167,15 +211,15 @@ jobs:
     - name: Determine PyPI repository URL
       id: pypi_repository
       run: |   
-        TAG_IS_DEV=${{ needs.validate_tag.outputs.TAG_IS_DEV }}
-        if [[ "${TAG_IS_DEV}" == 'true' ]]; then
-          echo "Will publish to test PyPI..."
-          echo "REPOSITORY_LEVEL=Test" >> $GITHUB_OUTPUT
-          echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
-        else
+        TAG_IS_RELEASE=${{ needs.validate_tag.outputs.TAG_IS_RELEASE }}
+        if [[ "${TAG_IS_RELEASE}" == 'true' ]]; then
           echo "Will publish to production PyPI..."
           echo "REPOSITORY_LEVEL=Production" >> $GITHUB_OUTPUT
           echo "REPOSITORY_URL=https://upload.pypi.org/legacy/" >> $GITHUB_OUTPUT
+        else
+          echo "Will publish to test PyPI..."
+          echo "REPOSITORY_LEVEL=Test" >> $GITHUB_OUTPUT
+          echo "REPOSITORY_URL=https://test.pypi.org/legacy/" >> $GITHUB_OUTPUT
         fi
 
 #    - name: Install Flit
@@ -212,7 +256,7 @@ jobs:
 
 
 
-          #  TAG_REGEX='^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d+))?((?:[ab]|rc)(0|[1-9]\d*))?(?:\.(?:dev|post)(0|[1-9]\d*))?$'
+          #  VERSION_TAG_REGEX='^v(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d+))?((?:[ab]|rc)(0|[1-9]\d*))?(?:\.(?:dev|post)(0|[1-9]\d*))?$'
           #  DEV_TAG_REGEX='\.(dev|post)(0|[1-9]\d*)$'
 
 # [[ $TAG_NAME =~ $DEV_TAG_REGEX ]] && TAG_IS_DEV="true" || TAG_IS_DEV="false"
@@ -285,8 +329,8 @@ jobs:
 
 
 
-#          TAG_REGEX='^v(\d+\.\d+(?:\.\d+)?)([ab]|rc)?\d*(\.dev|\.post)?\d*$'
-#          TAG_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
+#          VERSION_TAG_REGEX='^v(\d+\.\d+(?:\.\d+)?)([ab]|rc)?\d*(\.dev|\.post)?\d*$'
+#          VERSION_TAG_REGEX='^v([0-9]+(\.[0-9]+){1,2}((a|b|rc)[0-9]+)?)$'
 #          if [[ $TAG_NAME =~ $TAG_REGEX ]]; then
 #            echo "Valid version tag: $TAG_NAME"
 #            echo "TAG_VALID=true" >> $GITHUB_OUTPUT

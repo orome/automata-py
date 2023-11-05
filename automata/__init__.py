@@ -9,8 +9,9 @@ Functionality is currently limited to 1D, multi-state, immediate neighbor automa
 
 # See - http://www.python.org/dev/peps/pep-0440/
 # ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)(0|[1-9][0-9]*))?(\.(dev|post)(0|[1-9][0-9]*))?$
+# Note 0 is valid but no leading zeros
 # regexr.com/7mmq7
-# USE -
+# USE - (breaking).(feature).(fix)
 # See - https://py-pkgs.org/07-releasing-versioning.html#version-numbering
 __release__ = '0.1'  # N(.N)*
 # USE - To indicate status of release, can be on any branch

@@ -12,7 +12,7 @@ env:
   # regexr.com/7mmq7
   VERSION_TAG_REGEX: '^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))((a|b|rc)(0|[1-9][0-9]*))?(\.(dev|post)(0|[1-9][0-9]*))?$'
   DEV_TAG_REGEX: '\.(dev|post)(0|[1-9][0-9]*)$'
-  TOOL_PYTHON_VERSION: 3.12
+  TOOL_PYTHON_VERSION: ${{ vars.TOOL_PYTHON_VERSION }}
 
 jobs:
 

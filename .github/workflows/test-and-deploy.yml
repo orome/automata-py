@@ -97,7 +97,7 @@ jobs:
             echo "Valid package version: $PACKAGE_VERSION"
           else
             echo "Invalid package version: $PACKAGE_VERSION"
-            # exit 1  # Tests fail if the package version is invalid
+            exit 1  # Tests fail if the package version is invalid
           fi
 
   validate_tag:
@@ -235,12 +235,37 @@ jobs:
       with:
         repository-url: ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}
 
+  on_failure:
 
-#    - name: Notify - Completion
-#      uses: tsickert/discord-webhook@v5.3.0
-#      with:
-#        webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
-#        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - ended\n<@${{ secrets.DISCORD_USER_ID }}>"
+    name: Report Failure
+    runs-on: ubuntu-latest
+    needs: [test, validate_version, validate_tag, publish]
+    if: failure()
+
+    steps:
+
+    - name: Check which job failed
+      id: failed_job
+      run: |
+        if [ ${{ contains(needs.test.result, 'failure') }} == 'true' ]; then
+          echo "FAILED_JOB=Tests" >> $GITHUB_OUTPUT
+        fi
+        if [ ${{ contains(needs.validate_version.result, 'failure') }} == 'true' ]; then
+          echo "FAILED_JOB=Version Validation" >> $GITHUB_OUTPUT
+        fi
+        if [ ${{ contains(needs.validate_tag.result, 'failure') }} == 'true' ]; then
+          echo "FAILED_JOB=Tag Validation" >> $GITHUB_OUTPUT
+        fi
+        if [ ${{ contains(needs.publish.result, 'failure') }} == 'true' ]; then
+          echo "FAILED_JOB=PyPI Publication" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Discord failure notification
+      uses: tsickert/discord-webhook@v5.3.0
+      with:
+        webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
+        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - ${{ steps.failed_job.outputs.FAILED_JOB }} Failed!\n<@${{ secrets.DISCORD_USER_ID }}>"
+
 
 
 #    - name: Notify - Start

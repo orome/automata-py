@@ -248,19 +248,21 @@ jobs:
       id: failed_job
       run: |
         if [ ${{ contains(needs.test.result, 'failure') }} == 'true' ]; then
-          echo "FAILED_JOB=Tests" >> $GITHUB_OUTPUT
+          FAILED_JOB="Tests"
         fi
         if [ ${{ contains(needs.validate_version.result, 'failure') }} == 'true' ]; then
-          echo "FAILED_JOB=Version Validation" >> $GITHUB_OUTPUT
+          FAILED_JOB="Version Validation"
         fi
         if [ ${{ contains(needs.validate_tag.result, 'failure') }} == 'true' ]; then
-          echo "FAILED_JOB=Tag Validation" >> $GITHUB_OUTPUT
+          FAILED_JOB="Tag Validation"
         fi
         if [ ${{ contains(needs.publish.result, 'failure') }} == 'true' ]; then
-          echo "FAILED_JOB=PyPI Publication" >> $GITHUB_OUTPUT
+          FAILED_JOB="Publication"
         fi
+        echo "FAILED_JOB=${FAILED_JOB}" >> $GITHUB_OUTPUT
+        echo "${FAILED_JOB} Failure!"
 
-    - name: Discord failure notification
+    - name: Post Discord failure notification
       uses: tsickert/discord-webhook@v5.3.0
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}

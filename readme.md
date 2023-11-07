@@ -2,6 +2,7 @@
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/orome/automata-py.git/main/?urlpath=lab/tree/demo.ipynb)
 [![Testing](https://github.com/orome/automata-py/actions/workflows/test-and-deploy.yml/badge.svg?branch=main)](https://github.com/orome/automata-py/actions/workflows/test-and-deploy.yml)
+[![PyPi](https://img.shields.io/pypi/v/automata-py.svg)](https://pypi.python.org/pypi/automata-py)
 
 A simple Python (3.10+) implementation aimed at simulating some cellular automata,
 primarily those focused on by Stephan Wolfram, 

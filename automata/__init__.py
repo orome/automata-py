@@ -14,7 +14,7 @@ Functionality is currently limited to 1D, multi-state, immediate neighbor automa
 # USE - (breaking).(feature).(fix)
 # See - https://py-pkgs.org/07-releasing-versioning.html#version-numbering
 __release__ = '0.1'  # N(.N)*
-# USE - To indicate status of release, can be on any branch
+# USE - To indicate status of release, can be on any branch; sync with classifiers in pyproject.toml
 __pre_release__ = 'a3'  # aN | bN | rcN
 # USE - For all commits on develop branch, never on main branch, increment after each commit (that publishes)
 __suffix__ = '.dev21'  # .devN |  (.postN)

@@ -40,11 +40,11 @@ jobs:
     continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest, macos-13]
-        python-version:  ["3.12", "3.10", "3.11"]
-        include:
-          - os: macos-13
-            python-version: "3.13.0-alpha.1"
+        os: [ubuntu-latest]  #, macos-latest, windows-latest, macos-13]
+        python-version:  ["3.12"]  #, "3.10", "3.11"]
+#        include:
+#          - os: macos-13
+#            python-version: "3.13.0-alpha.1"
 
     steps:
 
@@ -286,6 +286,10 @@ jobs:
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
         content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - ${{ steps.failed_job.outputs.FAILED_JOB }} FAILED!\n<@${{ secrets.DISCORD_USER_ID }}>"
+        embed-title: "Failure Details"
+        embed-url: "https://github.com/${{ github.repository }}/actions/workflows/test-and-deploy.yml"
+        embed-description: "${{ steps.failed_job.outputs.FAILED_JOB }} failed"
+        embed-color: 15548997
 
   on_success:
 

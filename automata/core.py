@@ -81,6 +81,8 @@ class Rule:
         """
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
+        if base < 2:
+            raise ValueError(f"Base too small. Can't handle base < 2")
 
         digits = [Rule.ALPHABET[value // base ** i % base] for i in range(length)][::-1]
 
@@ -93,6 +95,10 @@ class Rule:
         """
         if base > len(Rule.ALPHABET):
             raise ValueError(f"Base too large. Can't handle base > {len(Rule.ALPHABET)}")
+        if base < 2:
+            raise ValueError(f"Base too small. Can't handle base < 2")
+        if any(int(char) >= base for char in encoding if char.isdigit()):
+            raise ValueError(f"Invalid value in encoding '{encoding}' for base {base}")
 
         return sum([Rule.ALPHABET.index(digit) * (base ** i) for i, digit in enumerate(reversed(encoding))])
 
@@ -181,7 +187,8 @@ class CellularAutomata:
         valid_boundary_conditions = ["zero", "periodic", "one"]
         if boundary_condition not in valid_boundary_conditions:
             raise CellularAutomataError(
-                f"Invalid boundary condition. Must be one of {', '.join(valid_boundary_conditions)}.")
+                f"Invalid boundary condition: {boundary_condition}. "
+                f"Must be one of {', '.join(valid_boundary_conditions)}.")
 
         self.rule = Rule(rule_number, base)
         self.boundary_condition = boundary_condition

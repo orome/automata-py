@@ -16,6 +16,23 @@ env:
 
 jobs:
 
+  on_start:
+
+    name: Report Start
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Log start
+      run: echo "Started..."
+
+    - name: Post Discord success notification
+      # noinspection SpellCheckingInspection
+      uses: tsickert/discord-webhook@v5.3.0
+      with:
+        webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
+        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - started\n"
+
   test:
 
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})
@@ -55,6 +72,7 @@ jobs:
           PYTHONPATH=. python tests/eyeball.py
 
       - name: Test with pytest
+        # noinspection SpellCheckingInspection
         run: |
           pip install pytest
           pytest tests/ --maxfail=3 --showlocals --color=yes -v
@@ -263,10 +281,11 @@ jobs:
         echo "${FAILED_JOB} Failure!"
 
     - name: Post Discord failure notification
+      # noinspection SpellCheckingInspection
       uses: tsickert/discord-webhook@v5.3.0
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
-        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - ${{ steps.failed_job.outputs.FAILED_JOB }} Failed!\n<@${{ secrets.DISCORD_USER_ID }}>"
+        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - ${{ steps.failed_job.outputs.FAILED_JOB }} FAILED!\n<@${{ secrets.DISCORD_USER_ID }}>"
 
   on_success:
 
@@ -281,7 +300,8 @@ jobs:
       run: echo "Success!"
 
     - name: Post Discord success notification
+      # noinspection SpellCheckingInspection
       uses: tsickert/discord-webhook@v5.3.0
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
-        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - Succeeded!\n<@${{ secrets.DISCORD_USER_ID }}>"
+        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - succeeded\n<@${{ secrets.DISCORD_USER_ID }}>"

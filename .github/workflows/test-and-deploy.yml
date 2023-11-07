@@ -26,12 +26,28 @@ jobs:
     - name: Log start
       run: echo "Started..."
 
-    - name: Post Discord success notification
+    - name: Post Discord start notification
       # noinspection SpellCheckingInspection
       uses: tsickert/discord-webhook@v5.3.0
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
         content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - started\n"
+
+    - name: Post Slack start notification
+      id: slack
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        payload: |
+          {
+            "workflow": "${{ github.workflow }}",
+            "repo": "${{ github.repository }}",
+            "status": "Started"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CODING_WEBHOOK_URL }}
+
+
+#SLACK_CODING_WEBHOOK_URL
 
   test:
 
@@ -291,6 +307,19 @@ jobs:
         embed-description: "${{ steps.failed_job.outputs.FAILED_JOB }} failed"
         embed-color: 15548997
 
+    - name: Post Slack failure notification
+      id: slack
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        payload: |
+          {
+            "workflow": "${{ github.workflow }}",
+            "repo": "${{ github.repository }}",
+            "status": "FAILED!"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CODING_WEBHOOK_URL }}
+
   on_success:
 
     name: Report Success
@@ -309,3 +338,16 @@ jobs:
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
         content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - succeeded\n<@${{ secrets.DISCORD_USER_ID }}>"
+
+    - name: Post Slack success notification
+      id: slack
+      uses: slackapi/slack-github-action@v1.24.0
+      with:
+        payload: |
+          {
+            "workflow": "${{ github.workflow }}",
+            "repo": "${{ github.repository }}",
+            "status": "Finished"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CODING_WEBHOOK_URL }}

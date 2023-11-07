@@ -46,9 +46,6 @@ jobs:
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CODING_WEBHOOK_URL }}
 
-
-#SLACK_CODING_WEBHOOK_URL
-
   test:
 
     name: Python ${{ matrix.python-version }} (${{ matrix.os }})
@@ -56,11 +53,11 @@ jobs:
     continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
     strategy:
       matrix:
-        os: [ubuntu-latest]  #, macos-latest, windows-latest, macos-13]
-        python-version:  ["3.12"]  #, "3.10", "3.11"]
-#        include:
-#          - os: macos-13
-#            python-version: "3.13.0-alpha.1"
+        os: [ubuntu-latest, macos-latest, windows-latest, macos-13]
+        python-version:  ["3.12", "3.10", "3.11"]
+        include:
+          - os: macos-13
+            python-version: "3.13.0-alpha.1"
 
     steps:
 

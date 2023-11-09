@@ -39,26 +39,26 @@ def automaton_options(f):
     Decorator to hold common options for reuse.
     """
     options = [
-        click.option('--rule', type=int,
+        click.option('--rule', '-r', type=int,
                      required=True,
                      help="The rule number for the cellular automaton."),
-        click.option('--initial_conditions', type=str,
+        click.option('--initial_conditions', '-i', type=str,
                      default='1',
                      help=f"The initial condition of the cellular automaton as a string of digits "
                           f"(default={DEFAULT_INITIAL_CONDITIONS})."),
-        click.option('--base', type=int,
+        click.option('--base', '-b', type=int,
                      default=2,
                      help=f"The base to be used for the cellular automaton "
                           f"(default={DEFAULT_BASE})."),
-        click.option('--frame_width', type=int,
+        click.option('--frame_width', '-w', type=int,
                      default=101,
                      help=f"The width of the cellular automaton frame "
                           f"default={DEFAULT_FRAME_WIDTH})."),
-        click.option('--frame_steps', type=int,
+        click.option('--frame_steps', '-s', type=int,
                      default=50,
                      help=f"The number of steps to simulate the cellular automaton for "
                           f"(default={DEFAULT_FRAME_STEPS})."),
-        click.option('--boundary_condition', type=click.Choice(['zero', 'periodic', 'one']),
+        click.option('--boundary_condition', '-c', type=click.Choice(['zero', 'periodic', 'one']),
                      default='zero',
                      help=f"The type of boundary condition to apply "
                           f"(default='{DEFAULT_BOUNDARY_CONDITION}').")
@@ -68,9 +68,12 @@ def automaton_options(f):
     return f
 
 
-@click.group()
-def cli():
-    pass
+@click.group(context_settings=dict(help_option_names=['-h', '--help']),
+             help='A simple CLI for displaying cellular automata.')
+@click.pass_context
+def cli(ctx):
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @cli.command(help="Displays the automaton as text.")
@@ -84,7 +87,7 @@ def show(rule: int, initial_conditions: str, base: int,
 # noinspection PyProtectedMember
 @cli.command(help="Displays an automaton run as text, step by step.")
 @automaton_options
-@click.option('--delay', type=float, default=DEFAULT_RUN_DELAY,
+@click.option('--delay', '-D', type=float, default=DEFAULT_RUN_DELAY,
               help=f"Delay between steps in seconds (default={DEFAULT_RUN_DELAY}).")
 def run(rule: int, initial_conditions: str, base: int,
         frame_width: int, frame_steps: int, boundary_condition: str,
@@ -98,7 +101,7 @@ def run(rule: int, initial_conditions: str, base: int,
 # noinspection PyProtectedMember
 @cli.command(help="Draws the cellular automaton and saves it as an image file.")
 @automaton_options
-@click.option('--output_format', type=click.Choice(['png', 'jpg', 'svg']), default='png',
+@click.option('--output_format', '-F', type=click.Choice(['png', 'jpg', 'svg']), default='png',
               help=f"The output format for the image file (default='{DEFAULT_DISPLAY_FORMAT}').")
 def draw(rule: int, initial_conditions: str, base: int,
          frame_width: int, frame_steps: int, boundary_condition: str,

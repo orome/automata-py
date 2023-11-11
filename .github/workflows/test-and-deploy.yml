@@ -31,10 +31,9 @@ jobs:
       uses: tsickert/discord-webhook@v5.3.0
       with:
         webhook-url: ${{ secrets.DISCORD_CODING_WEBHOOK_URL }}
-        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - started\n"
+        content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - started"
 
     - name: Post Slack start notification
-      id: slack
       uses: slackapi/slack-github-action@v1.24.0
       with:
         payload: |
@@ -61,34 +60,34 @@ jobs:
 
     steps:
 
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: Display Python version (${{ matrix.python-version }})
-        run: python -c "import sys; print(sys.version)"
+    - name: Display Python version (${{ matrix.python-version }})
+      run: python -c "import sys; print(sys.version)"
 
-      # Skip for Windows; path setting there isn't worth the trouble
-      - name: Run eyeball checks
-        if: runner.os != 'Windows'
-        run: |
-          pip install termcolor
-          PYTHONPATH=. python tests/eyeball.py
+    # Skip for Windows; path setting there isn't worth the trouble
+    - name: Run eyeball checks
+      if: runner.os != 'Windows'
+      run: |
+        pip install termcolor
+        PYTHONPATH=. python tests/eyeball.py
 
-      - name: Test with pytest
-        # noinspection SpellCheckingInspection
-        run: |
-          pip install pytest
-          pytest tests/ --maxfail=3 --showlocals --color=yes -v
+    - name: Test with pytest
+      # noinspection SpellCheckingInspection
+      run: |
+        pip install pytest
+        pytest tests/ --maxfail=3 --showlocals --color=yes -v
 
   validate_version:
     name: Validate Package Version
@@ -100,36 +99,36 @@ jobs:
 
     steps:
 
-      - name: Checkout repo
-        uses: actions/checkout@v4
+    - name: Checkout repo
+      uses: actions/checkout@v4
 
-      - name: Set up Python (${{ env.TOOL_PYTHON_VERSION }})
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.TOOL_PYTHON_VERSION }}
+    - name: Set up Python (${{ env.TOOL_PYTHON_VERSION }})
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.TOOL_PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: Validate package version
-        id: get_version
-        run: |
-          # Get the package version and confirm it is valid
-          
-          PACKAGE_VERSION=$(python -c 'import automata; print(automata.__version__)')
-          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT          
-          
-          # Check if the tag name matches the version pattern
-          if [[ v"${PACKAGE_VERSION}" =~ ${VERSION_TAG_REGEX} ]]; then PACKAGE_VALID="true"; else PACKAGE_VALID="false"; fi
-          echo "PACKAGE_VALID=$PACKAGE_VALID" >> $GITHUB_OUTPUT  
-          if [[ $PACKAGE_VALID == "true" ]]; then
-            echo "Valid package version: $PACKAGE_VERSION"
-          else
-            echo "Invalid package version: $PACKAGE_VERSION"
-            exit 1  # Tests fail if the package version is invalid
-          fi
+    - name: Validate package version
+      id: get_version
+      run: |
+        # Get the package version and confirm it is valid
+        
+        PACKAGE_VERSION=$(python -c 'import automata; print(automata.__version__)')
+        echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> $GITHUB_OUTPUT          
+        
+        # Check if the tag name matches the version pattern
+        if [[ v"${PACKAGE_VERSION}" =~ ${VERSION_TAG_REGEX} ]]; then PACKAGE_VALID="true"; else PACKAGE_VALID="false"; fi
+        echo "PACKAGE_VALID=$PACKAGE_VALID" >> $GITHUB_OUTPUT  
+        if [[ $PACKAGE_VALID == "true" ]]; then
+          echo "Valid package version: $PACKAGE_VERSION"
+        else
+          echo "Invalid package version: $PACKAGE_VERSION"
+          exit 1  # Tests fail if the package version is invalid
+        fi
 
   validate_tag:
     name: Validate Tag
@@ -337,7 +336,6 @@ jobs:
         content: "${{ github.repository }} - [${{ github.actor }}] ${{ github.workflow }} - succeeded\n<@${{ secrets.DISCORD_USER_ID }}>"
 
     - name: Post Slack success notification
-      id: slack
       uses: slackapi/slack-github-action@v1.24.0
       with:
         payload: |

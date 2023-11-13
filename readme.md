@@ -1,7 +1,9 @@
 ## Automata
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/orome/automata-py.git/main/?urlpath=lab/tree/demo.ipynb)
-[![Testing](https://github.com/orome/automata-py/actions/workflows/test-and-deploy.yml/badge.svg?branch=main)](https://github.com/orome/automata-py/actions/workflows/test-and-deploy.yml)
+[//]: # (USE - All branches mentioned in links and badges should be DEVELOP)
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/orome/automata-py.git/develop/?urlpath=lab/tree/demo.ipynb)
+[![Testing](https://github.com/orome/automata-py/actions/workflows/test-and-deploy.yml/badge.svg?branch=develop)](https://github.com/orome/automata-py/actions/workflows/test-and-deploy.yml?query=branch%3Adevelop)
 [![PyPi](https://img.shields.io/pypi/v/automata-py.svg)](https://pypi.python.org/pypi/automata-py)
 [![PyPi Status](https://img.shields.io/pypi/status/automata-py.svg)](https://pypi.python.org/pypi/automata-py)
 [![Supported Python](https://img.shields.io/pypi/pyversions/automata-py.svg)](https://pypi.python.org/pypi/automata-py)
@@ -12,9 +14,11 @@ as I read along in [A New Kind of Science](https://www.wolframscience.com/nks/p3
 perpetually very much under construction. 
 
 To play with the latest semi-stable version, 
-[launch the demo notebook](https://mybinder.org/v2/gh/orome/automata-py.git/main/?urlpath=lab/tree/demo.ipynb) 
+[launch the demo notebook](https://mybinder.org/v2/gh/orome/automata-py.git/develop/?urlpath=lab/tree/demo.ipynb) 
 in Binder.
 
-![Example display](https://raw.githubusercontent.com/orome/automata-py/main/docs/readme_eg.png)
+[//]: # (USE - Branches for all images should be DEVELOP)
+
+![Example display](https://raw.githubusercontent.com/orome/automata-py/develop/docs/readme_eg.png)
 
 A [related project](https://github.com/orome/turing-py) covers some basics of Turing Machines.

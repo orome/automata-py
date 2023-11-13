@@ -17,7 +17,7 @@ __release__ = '0.1'  # N(.N)*
 # USE - To indicate status of release, can be on any branch; sync with classifiers in pyproject.toml
 __pre_release__ = 'a3'  # aN | bN | rcN
 # USE - For all commits on develop branch, never on main branch, increment after each commit (that publishes)
-__suffix__ = '.dev22'  # .devN |  (.postN)  # USE - Must be NON-EMPTY on develop
+__suffix__ = '.dev23'  # .devN |  (.postN)  # USE - Must be NON-EMPTY on develop
 __version__ = __release__ + __pre_release__ + __suffix__
 
 from .core import *

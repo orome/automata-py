@@ -17,7 +17,6 @@ env:
 jobs:
 
   on_start:
-
     name: Report Start
     runs-on: ubuntu-latest
 
@@ -46,8 +45,7 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CODING_WEBHOOK_URL }}
 
   test:
-
-    name: Python ${{ matrix.python-version }} (${{ matrix.os }})
+    name: Test - Python ${{ matrix.python-version }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.python-version == '3.13.0-alpha.1' }}
     strategy:
@@ -196,11 +194,10 @@ jobs:
         fi
 
   publish:
-
     name: Build and Publish
-    needs: [validate_tag, validate_version]
     runs-on: ubuntu-latest
     environment: deployment
+    needs: [validate_tag, validate_version]
     # Includes redundant check for PACKAGE_VALID
     if: >-
       needs.validate_version.outputs.PACKAGE_VALID == 'true' &&  
@@ -266,7 +263,6 @@ jobs:
         repository-url: ${{ steps.pypi_repository.outputs.REPOSITORY_URL }}
 
   on_failure:
-
     name: Report Failure
     runs-on: ubuntu-latest
     needs: [test, validate_version, validate_tag, publish]
@@ -317,7 +313,6 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_CODING_WEBHOOK_URL }}
 
   on_success:
-
     name: Report Success
     runs-on: ubuntu-latest
     needs: [test, validate_version, validate_tag, publish]

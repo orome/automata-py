@@ -230,12 +230,15 @@ class CellularAutomata:
         """
         Returns boundary values based on boundary condition and current row.
         """
-        if self.boundary_condition == "zero":
-            return Rule.ALPHABET[0], Rule.ALPHABET[0]
-        elif self.boundary_condition == "periodic":
-            return current_row[-1], current_row[0]
-        elif self.boundary_condition == "one":
-            return Rule.ALPHABET[1], Rule.ALPHABET[1]
+        match self.boundary_condition:
+            case "zero":
+                return Rule.ALPHABET[0], Rule.ALPHABET[0]
+            case "periodic":
+                return current_row[-1], current_row[0]
+            case "one":
+                return Rule.ALPHABET[1], Rule.ALPHABET[1]
+            case _:
+                raise CellularAutomataError(f"Invalid boundary condition: '{self.boundary_condition}'.")
 
     def _compute_automaton(self) -> None:
         """

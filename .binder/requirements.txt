@@ -6,7 +6,8 @@
 -r ../requirements.txt
 #-e ..                      # if using a setup.py
 
-notebook >=7.0
+jupyterlab
+#notebook >=7.0
 
 #nbdime
 #jupyterlab-git             # restore instead of nbgitpuller when issue 998 is resolved

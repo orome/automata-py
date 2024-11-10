@@ -8,7 +8,7 @@
 [![PyPi Status](https://img.shields.io/pypi/status/automata-py.svg)](https://pypi.python.org/pypi/automata-py)
 [![Supported Python](https://img.shields.io/pypi/pyversions/automata-py.svg)](https://pypi.python.org/pypi/automata-py)
 
-A simple Python (3.10+) implementation aimed at simulating some cellular automata,
+A simple Python (3.12+) implementation aimed at simulating some cellular automata,
 primarily those focused on by Stephan Wolfram, 
 as I read along in [A New Kind of Science](https://www.wolframscience.com/nks/p315--the-intrinsic-generation-of-randomness/),
 perpetually very much under construction. 

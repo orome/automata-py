@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Development Status :: 3 - Alpha",  # Sync with version in __init__.py
     "Intended Audience :: Education",
     "Environment :: Console"
@@ -43,3 +44,103 @@ Home = "https://github.com/orome/automata-py"
 notebook = ["ipywidgets", "IPython"]
 cli = ["click"]
 all = ["ipywidgets", "IPython", "click"]
+
+
+[tool.uv.pip]
+python-version = "3.8"
+
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+preview = true
+dummy-variable-rgx = "^_$"
+task-tags = ["TBD", "REV", "!!!", "ASK"]
+select = [
+    "E",
+    "F",
+    "D",
+    "Q",
+    "ANN",
+    "UP",
+    "B",
+    "SIM",
+]
+extend-select = [
+    "PL",
+    "PLW0108",
+    "TC",
+    "SLF001",
+]
+ignore = [
+    #    "ANN202",
+    "D1",
+    "ANN003",
+]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+#forced-separate = [""]
+#force-to-top = [""]
+#lines-between-types = 1
+
+# [tool.ruff.lint.pycodestyle]
+# ignore-overlong-task-comments = true
+# max-line-length = 120
+# max-doc-length = null
+
+[tool.ruff.lint.pylint]
+max-returns = 10
+# max-public-methods = 20
+ max-statements = 60
+# max-positional-args = 8
+max-branches = 20
+
+#[tool.ruff.lint.flake8-type-checking]
+#runtime-evaluated-base-classes = ["flask_sqlalchemy.model.Model", "sqlalchemy.orm.DeclarativeBase"]
+
+
+[tool.ty.environment]
+python-version = "3.14"
+
+
+[tool.ty.analysis]
+respect-type-ignore-comments = true
+
+
+#[tool.pyright]
+#pythonVersion = "3.14"
+#reportMissingImports = false
+#reportMissingModuleSource = false
+##reportAttributeAccessIssue = true
+
+[tool.basedpyright]
+pythonVersion = "3.14"
+reportMissingImports = true
+reportMissingModuleSource = false
+typeCheckingMode = "recommended"
+useLibraryCodeForTypes = true
+#reportUnknownVariableType = "none"
+reportUnreachable = "error"
+reportExplicitAny = "error"
+reportAny = "error"
+reportPrivateUsage = "error"
+exclude = [
+    ".venv",
+    "**/.venv",
+    "_junk/**",
+    "**/_junk/**",
+]
+#include = [
+#    "app/__init__.py",
+#]
+
+#[tool.basedpyright.analysis]
+#useLibraryCodeForTypes = true
+
+
+[tool.black]
+target-version = ['py314']
+line-length = 120
